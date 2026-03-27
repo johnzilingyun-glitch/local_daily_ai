@@ -18,7 +18,7 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
   app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
     next();
@@ -62,9 +62,12 @@ async function startServer() {
   function saveAnalysis(type: 'market' | 'stock', data: any) {
     try {
       const filename = `${type}_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-      fs.writeFileSync(path.join(HISTORY_DIR, filename), JSON.stringify(data, null, 2));
+      const filePath = path.join(HISTORY_DIR, filename);
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      console.log(`Analysis saved to ${filePath}`);
     } catch (err) {
       console.error('Failed to save analysis:', err);
+      throw err;
     }
   }
 
@@ -92,8 +95,12 @@ async function startServer() {
     if (!type || !data) {
       return res.status(400).json({ error: 'Type and data are required' });
     }
-    saveAnalysis(type, data);
-    res.json({ success: true });
+    try {
+      saveAnalysis(type, data);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to save analysis to history', details: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   app.post('/api/admin/log', (req, res) => {

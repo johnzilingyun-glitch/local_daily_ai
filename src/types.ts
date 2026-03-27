@@ -143,6 +143,7 @@ export interface StockAnalysis {
     logic: string;
     volatilityRisk: string;
   };
+  chatHistory?: { role: "user" | "ai"; content: string }[];
 }
 
 export interface ChatMessage {
@@ -264,4 +265,5 @@ export interface AgentDiscussion {
 export interface GeminiConfig {
   model: string;
   apiKey?: string;
+  feishuWebhookUrl?: string;
 }

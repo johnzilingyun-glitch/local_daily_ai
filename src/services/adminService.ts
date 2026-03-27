@@ -12,11 +12,15 @@ export async function getHistoryContext(): Promise<any[]> {
 
 export async function saveAnalysisToHistory(type: 'market' | 'stock', data: any) {
   try {
-    await fetch('/api/admin/save-analysis', {
+    const response = await fetch('/api/admin/save-analysis', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, data })
     });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save analysis');
+    }
   } catch (err) {
     console.error('Failed to save analysis to history:', err);
   }

@@ -6,15 +6,32 @@ import { getHistoryContext, saveAnalysisToHistory } from "./adminService";
 
 let marketCache: Record<string, { data: MarketOverview; timestamp: number }> = {};
 
+// Initialize cache from localStorage
+if (typeof window !== 'undefined') {
+  const savedCache = localStorage.getItem('marketCache');
+  if (savedCache) {
+    try {
+      marketCache = JSON.parse(savedCache);
+    } catch (e) {
+      console.error('Failed to parse market cache', e);
+    }
+  }
+}
+
 export async function getMarketOverview(config?: GeminiConfig, market: Market = "A-Share", forceRefresh: boolean = false): Promise<MarketOverview> {
+  const now = new Date();
+  const today = now.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  
   if (!forceRefresh && marketCache[market]) {
-    return marketCache[market].data;
+    const cachedDate = new Date(marketCache[market].timestamp).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    if (cachedDate === today) {
+      return marketCache[market].data;
+    }
   }
 
   const ai = createAI(config);
   const history = await getHistoryContext();
-  const now = new Date();
-  const beijingDate = now.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  const beijingDate = today;
 
   let indicesData = [];
   try {
@@ -40,6 +57,9 @@ export async function getMarketOverview(config?: GeminiConfig, market: Market = 
   
   if (overview.indices && overview.indices.length > 0) {
     marketCache[market] = { data: overview, timestamp: Date.now() };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('marketCache', JSON.stringify(marketCache));
+    }
     await saveAnalysisToHistory('market', overview);
   }
 
