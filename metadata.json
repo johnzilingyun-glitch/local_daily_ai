@@ -1,5 +1,5 @@
 {
-  "name": "",
-  "description": "",
+  "name": "AI Daily Stock Analysis",
+  "description": "An intelligent dashboard for daily stock market analysis, news, and AI-driven insights using Gemini.",
   "requestFramePermissions": []
 }
