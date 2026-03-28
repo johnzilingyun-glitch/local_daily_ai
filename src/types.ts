@@ -114,6 +114,25 @@ export interface StockAnalysis {
   finalConclusion?: string;
   tradingPlan?: TradingPlan;
   tradingPlanHistory?: TradingPlanVersion[];
+  scenarios?: Scenario[];
+  valuationMatrix?: Scenario[];
+  stressTestLogic?: string;
+  catalystList?: Catalyst[];
+  sensitivityFactors?: SensitivityFactor[];
+  expectationGap?: ExpectationGap;
+  analystWeights?: AnalystWeight[];
+  calculations?: CalculationResult[];
+  controversialPoints?: string[];
+  positionManagement?: {
+    layeredEntry: string[];
+    sizingLogic: string;
+    riskAdjustedStance: string;
+  };
+  timeDimension?: {
+    expectedDuration: string;
+    keyMilestones: string[];
+    exitTriggers: string[];
+  };
   moatAnalysis?: {
     type: string;
     strength: "Wide" | "Narrow" | "None";

@@ -104,7 +104,7 @@ export default function App() {
   } = useUIStore();
 
   const {
-    marketOverviews, setMarketOverview, marketLastUpdatedTimes, setMarketLastUpdated, // Enhanced for per-market stats
+    marketOverviews = {}, setMarketOverview, marketLastUpdatedTimes = {}, setMarketLastUpdated, // Enhanced for per-market stats
     dailyReport, setDailyReport,
     historyItems, setHistoryItems,
     optimizationLogs, setOptimizationLogs
@@ -196,11 +196,17 @@ export default function App() {
       if (discussion.timeDimension) setTimeDimension(discussion.timeDimension);
       if (discussion.tradingPlanHistory) setTradingPlanHistory(discussion.tradingPlanHistory);
 
-      setAnalysis({
+      const finalAnalysis: StockAnalysis = {
         ...analysis,
+        ...discussion,
+        discussion: discussion.messages,
         finalConclusion: discussion.finalConclusion || analysis.finalConclusion,
         tradingPlan: discussion.tradingPlan || analysis.tradingPlan
-      });
+      };
+      setAnalysis(finalAnalysis);
+      
+      // Update history with latest discussion
+      await saveAnalysisToHistory('stock', finalAnalysis);
     } catch (err) {
       console.error('Reviewer failed:', err);
       setDiscussionMessages([...updatedMessages, {
@@ -384,8 +390,8 @@ export default function App() {
         // Update main analysis with discussion results
         const finalAnalysis: StockAnalysis = {
           ...result,
+          ...discussion,
           discussion: discussion.messages,
-          finalConclusion: discussion.finalConclusion,
           tradingPlan: discussion.tradingPlan || result.tradingPlan,
           verificationMetrics: discussion.verificationMetrics || result.verificationMetrics,
           capitalFlow: discussion.capitalFlow || result.capitalFlow
@@ -537,6 +543,7 @@ export default function App() {
             // Restore discussion results if available
             if (item.discussion) {
               setDiscussionResults({
+                ...item,
                 messages: item.discussion,
                 finalConclusion: item.finalConclusion || '',
                 tradingPlan: item.tradingPlan,
@@ -545,7 +552,7 @@ export default function App() {
               });
               setShowDiscussion(true);
             } else {
-              setDiscussionResults(null);
+              resetAnalysis();
               setShowDiscussion(false);
             }
             

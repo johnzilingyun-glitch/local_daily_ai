@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AgentRole } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X } from 'lucide-react';
+import { User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X, Maximize2, Minimize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAnalysisStore } from '../stores/useAnalysisStore';
@@ -10,6 +10,9 @@ import { useUIStore } from '../stores/useUIStore';
 interface DiscussionPanelProps {
   onSendMessage?: (message: string) => void;
   onClose?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onPointerDownDrag?: (e: React.PointerEvent) => void;
 }
 
 const roleIcons: Record<AgentRole, React.ReactNode> = {
@@ -50,7 +53,10 @@ const roleNames: Record<AgentRole, string> = {
 
 export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({ 
   onSendMessage,
-  onClose
+  onClose,
+  isFullscreen,
+  onToggleFullscreen,
+  onPointerDownDrag
 }) => {
   const { 
     discussionMessages: messages, 
@@ -118,13 +124,25 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
     <div className="flex flex-col h-full bg-slate-900 overflow-hidden">
       <div className="p-6 border-b border-slate-700/70 bg-slate-800 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <div 
+            className="relative cursor-grab active:cursor-grabbing p-2 -ml-2 hover:bg-slate-700/50 rounded-lg transition-colors"
+            onPointerDown={onPointerDownDrag}
+          >
             <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
             <div className="absolute inset-0 w-3 h-3 rounded-full bg-emerald-500 animate-ping opacity-75" />
           </div>
           <h3 className="text-base font-black uppercase tracking-[0.2em] text-slate-200">AI 专家组联席会议</h3>
         </div>
         <div className="flex items-center gap-4">
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              className="p-2 hover:bg-slate-700 rounded-xl text-slate-400 hover:text-white transition-colors"
+              title={isFullscreen ? "退出全屏" : "全屏模式"}
+            >
+              {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+            </button>
+          )}
           {messages.length > 0 && !isDiscussing && (
             <button 
               onClick={handleDownload}
