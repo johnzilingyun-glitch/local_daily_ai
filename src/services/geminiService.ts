@@ -54,20 +54,43 @@ export async function withRetry<T>(
 }
 
 export function extractJsonBlock(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    return trimmed;
+  let cleaned = raw.trim();
+  
+  // 1. Try to find triple backtick blocks
+  const tripleBacktickMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (tripleBacktickMatch?.[1]) {
+    return tripleBacktickMatch[1].trim();
   }
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fencedMatch?.[1]) {
-    return fencedMatch[1].trim();
+
+  // 2. Try to find single backtick blocks if they wrap the whole thing
+  const singleBacktickMatch = cleaned.match(/^`\s*([\s\S]*?)\s*`$/i);
+  if (singleBacktickMatch?.[1]) {
+    return singleBacktickMatch[1].trim();
   }
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1);
+
+  // 3. Find the first { or [ and the last } or ]
+  const firstBrace = cleaned.indexOf("{");
+  const firstBracket = cleaned.indexOf("[");
+  const lastBrace = cleaned.lastIndexOf("}");
+  const lastBracket = cleaned.lastIndexOf("]");
+  
+  let start = -1;
+  let end = -1;
+  
+  // Determine if we are looking for an object or an array based on what comes first
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    start = firstBrace;
+    end = lastBrace;
+  } else if (firstBracket !== -1) {
+    start = firstBracket;
+    end = lastBracket;
   }
-  throw new Error("Gemini returned a non-JSON response.");
+  
+  if (start !== -1 && end !== -1 && end > start) {
+    return cleaned.slice(start, end + 1);
+  }
+  
+  return cleaned;
 }
 
 export function parseJsonResponse<T>(raw: string): T {

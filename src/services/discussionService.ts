@@ -150,7 +150,8 @@ export async function startAgentDiscussion(
   const response = await withRetry(async () => {
     const result = await generateContentWithUsage(ai, {
       model: config?.model || GEMINI_MODEL,
-      contents: prompt
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
     });
     return result.text;
   });
