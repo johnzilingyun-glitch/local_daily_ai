@@ -3,13 +3,15 @@ import { createAI, withRetry, parseJsonResponse, generateContentWithUsage, GEMIN
 import { getAnalyzeStockPrompt, getChatMessagePrompt, getStockReportPrompt, getDiscussionReportPrompt } from "./prompts";
 import { Market, StockAnalysis, AgentMessage, Scenario, AgentDiscussion, GeminiConfig } from "../types";
 import { getHistoryContext, saveAnalysisToHistory } from "./adminService";
+import { getBeijingDate } from "./dateUtils";
+import { getCommoditiesData } from "./marketService";
 
 export async function analyzeStock(symbol: string, market: Market, config?: GeminiConfig): Promise<StockAnalysis> {
   const ai = createAI(config);
   const history = await getHistoryContext();
   const now = new Date();
-  const beijingDate = now.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  const beijingShortDate = beijingDate.split('/').slice(1).join('/');
+  const beijingDate = getBeijingDate(now);
+  const beijingShortDate = beijingDate.split(/[-/]/).slice(1).join('/');
 
   let realtimeData = null;
   const res = await fetch(`/api/stock/realtime?symbol=${encodeURIComponent(symbol)}&market=${market}`);
@@ -26,13 +28,17 @@ export async function analyzeStock(symbol: string, market: Market, config?: Gemi
     throw new Error(`请核实查询代码及范围：无法在 港股 中找到 "${symbol}"。你可能输入了非港股代码。`);
   }
 
-  const prompt = getAnalyzeStockPrompt(symbol, market, realtimeData, history, beijingDate, beijingShortDate, now);
+  const commoditiesData = await getCommoditiesData();
+  const prompt = getAnalyzeStockPrompt(symbol, market, realtimeData, commoditiesData, history, beijingDate, beijingShortDate, now);
 
   const response = await withRetry(async () => {
     const result = await generateContentWithUsage(ai, {
       model: config?.model || GEMINI_MODEL,
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }]
+      }
     });
     return result.text;
   });
@@ -44,7 +50,8 @@ export async function analyzeStock(symbol: string, market: Market, config?: Gemi
 
 export async function sendChatMessage(userMessage: string, analysis: StockAnalysis, config?: GeminiConfig): Promise<string> {
   const ai = createAI(config);
-  const prompt = getChatMessagePrompt(userMessage, analysis);
+  const commoditiesData = await getCommoditiesData();
+  const prompt = getChatMessagePrompt(userMessage, analysis, commoditiesData);
 
   const response = await withRetry(async () => {
     const result = await generateContentWithUsage(ai, {

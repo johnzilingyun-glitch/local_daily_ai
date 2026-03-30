@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Clock, BarChart3 } from 'lucide-react';
-import { getHistoryContext } from '../services/adminService';
+import { getHistoryContext } from '../services/aiService';
+import { generateHistoryItemKey } from '../services/dateUtils';
 
 interface HistoryModalProps {
   isOpen: boolean;
@@ -59,29 +60,34 @@ export function HistoryModal({ isOpen, onClose, onSelect }: HistoryModalProps) {
           ) : filteredHistory.length === 0 ? (
             <div className="text-center py-10 text-slate-500">暂无记录</div>
           ) : (
-            filteredHistory.map((item, idx) => (
-              <button
-                key={idx}
-                onClick={() => { onSelect(item); onClose(); }}
-                className="w-full flex items-center justify-between p-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-slate-700"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-slate-900 rounded-lg">
-                    <BarChart3 className="text-emerald-500" size={20} />
+            filteredHistory.map((item, idx) => {
+              const itemKey = generateHistoryItemKey(item, idx);
+              return (
+                <button
+                  key={itemKey}
+                  onClick={() => { onSelect(item); onClose(); }}
+                  className="w-full flex items-center justify-between p-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-slate-700"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-slate-900 rounded-lg">
+                      <BarChart3 className="text-emerald-500" size={20} />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-white">{item.stockInfo?.name}</p>
+                      <p className="text-xs text-slate-400 font-mono">{item.stockInfo?.symbol}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="font-bold text-white">{item.stockInfo?.name}</p>
-                    <p className="text-xs text-slate-400 font-mono">{item.stockInfo?.symbol}</p>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">
+                      {item.stockInfo?.lastUpdated || new Date().toLocaleString()}
+                    </p>
+                    {item.chatHistory && item.chatHistory.length > 0 && (
+                      <p className="text-[10px] text-emerald-500 mt-1 font-bold uppercase tracking-tighter">包含对话</p>
+                    )}
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-500">{new Date(item.stockInfo?.lastUpdated || Date.now()).toLocaleString()}</p>
-                  {item.chatHistory && item.chatHistory.length > 0 && (
-                    <p className="text-[10px] text-emerald-500 mt-1 font-bold uppercase tracking-tighter">包含对话</p>
-                  )}
-                </div>
-              </button>
-            ))
+                </button>
+              );
+            })
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { MarketOverview } from '../types';
+import { MarketOverview, Market } from '../types';
 
 interface MarketState {
   marketOverviews: Record<string, MarketOverview | null>;
@@ -8,12 +8,16 @@ interface MarketState {
   dailyReport: string | null;
   historyItems: any[];
   optimizationLogs: any[];
+  overviewMarket: Market;
 
   setMarketOverview: (market: string, overview: MarketOverview | null) => void;
   setMarketLastUpdated: (market: string, timestamp: number | null) => void;
   setDailyReport: (report: string | null) => void;
   setHistoryItems: (items: any[]) => void;
   setOptimizationLogs: (logs: any[]) => void;
+  setOverviewMarket: (market: Market) => void;
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useMarketStore = create<MarketState>()(
@@ -32,6 +36,8 @@ export const useMarketStore = create<MarketState>()(
       dailyReport: null,
       historyItems: [],
       optimizationLogs: [],
+      overviewMarket: "A-Share",
+      _hasHydrated: false,
 
       setMarketOverview: (market, overview) => 
         set((state) => ({ 
@@ -44,9 +50,14 @@ export const useMarketStore = create<MarketState>()(
       setDailyReport: (dailyReport) => set({ dailyReport }),
       setHistoryItems: (historyItems) => set({ historyItems }),
       setOptimizationLogs: (optimizationLogs) => set({ optimizationLogs }),
+      setOverviewMarket: (overviewMarket) => set({ overviewMarket }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: 'market-storage',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

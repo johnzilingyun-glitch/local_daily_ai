@@ -1,18 +1,31 @@
 export async function getHistoryContext(): Promise<any[]> {
   try {
-    const response = await fetch('/api/admin/history-context');
+    const response = await fetch('/api/history/context');
     if (response.ok) {
-      return await response.json();
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (parseErr) {
+        console.error('Failed to parse history context JSON. Response text:', text.substring(0, 500));
+        throw parseErr;
+      }
+    } else {
+      const errorText = await response.text();
+      console.error(`Failed to fetch history context: ${response.status} ${response.statusText}`, errorText.substring(0, 500));
     }
   } catch (err) {
     console.error('Failed to fetch history context:', err);
+    if (err instanceof Error) {
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+    }
   }
   return [];
 }
 
 export async function saveAnalysisToHistory(type: 'market' | 'stock', data: any) {
   try {
-    const response = await fetch('/api/admin/save-analysis', {
+    const response = await fetch('/api/history/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, data })
@@ -28,7 +41,7 @@ export async function saveAnalysisToHistory(type: 'market' | 'stock', data: any)
 
 export async function logOptimization(field: string, oldValue: any, newValue: any, description: string) {
   try {
-    await fetch('/api/admin/log', {
+    await fetch('/api/logs/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ field, oldValue, newValue, description })

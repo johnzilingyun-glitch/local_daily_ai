@@ -71,16 +71,7 @@ async function startServer() {
     }
   }
 
-  app.get('/api/admin/optimization-logs', (req, res) => {
-    try {
-      const logs = JSON.parse(fs.readFileSync(LOG_FILE, 'utf-8'));
-      res.json(logs);
-    } catch (err) {
-      res.status(500).json({ error: 'Failed to read logs' });
-    }
-  });
-
-  app.get('/api/admin/history-context', (req, res) => {
+  app.get('/api/history/context', (req, res) => {
     try {
       const files = fs.readdirSync(HISTORY_DIR).sort().reverse().slice(0, 10);
       const history = files.map(f => JSON.parse(fs.readFileSync(path.join(HISTORY_DIR, f), 'utf-8')));
@@ -90,7 +81,16 @@ async function startServer() {
     }
   });
 
-  app.post('/api/admin/save-analysis', (req, res) => {
+  app.get('/api/logs/optimization', (req, res) => {
+    try {
+      const logs = JSON.parse(fs.readFileSync(LOG_FILE, 'utf-8'));
+      res.json(logs);
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to read logs' });
+    }
+  });
+
+  app.post('/api/history/save', (req, res) => {
     const { type, data } = req.body;
     if (!type || !data) {
       return res.status(400).json({ error: 'Type and data are required' });
@@ -103,7 +103,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/admin/log', (req, res) => {
+  app.post('/api/logs/add', (req, res) => {
     const { field, oldValue, newValue, description } = req.body;
     if (!field || !description) {
       return res.status(400).json({ error: 'Field and description are required' });
@@ -205,7 +205,7 @@ async function startServer() {
   });
 
   // Env Check Endpoint for debugging
-  app.get('/api/admin/env-check', (req, res) => {
+  app.get('/api/history/env-check', (req, res) => {
     res.json({
       keys: Object.keys(process.env),
       feishuWebhookDefined: !!process.env.FEISHU_WEBHOOK_URL,
@@ -293,6 +293,55 @@ async function startServer() {
     } catch (error) {
       console.error('Indices fetch error:', error);
       res.status(500).json({ error: 'Failed to fetch indices data' });
+    }
+  });
+
+  // Commodities Endpoint
+  app.get('/api/stock/commodities', async (req, res) => {
+    console.log('API Request: /api/stock/commodities');
+    const commoditySymbols = [
+      { symbol: 'GC=F', name: '伦敦金 (XAU)', unit: '$/oz' },
+      { symbol: 'HG=F', name: 'LME铜 (HG)', unit: '$/lb' },
+      { symbol: 'CL=F', name: '原油 (WTI)', unit: '$/bbl' },
+      { symbol: 'SI=F', name: '白银', unit: '$/oz' },
+    ];
+
+    try {
+      const results = [];
+      for (const item of commoditySymbols) {
+        try {
+          const quote = await yahooFinance.quote(item.symbol) as any;
+          if (quote) {
+            results.push({
+              name: item.name,
+              symbol: item.symbol,
+              price: quote.regularMarketPrice,
+              changePercent: quote.regularMarketChangePercent !== undefined ? parseFloat(quote.regularMarketChangePercent.toFixed(2)) : 0,
+              unit: item.unit,
+              lastUpdated: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) + ' CST'
+            });
+          }
+        } catch (e) {
+          console.warn(`Failed to fetch commodity ${item.symbol}:`, e);
+        }
+      }
+
+      // Special handling for Lithium Carbonate (often no direct ticker on Yahoo)
+      // We'll try a search or just provide a placeholder that the AI should verify, 
+      // but the user wants "accurate foundational data".
+      // Let's try to find a proxy or just leave it to the AI if we can't get it via API.
+      // Actually, I'll add a search for "Lithium Carbonate" to see if we can get a price snippet.
+      try {
+        const search = await yahooFinance.search('Lithium Carbonate price');
+        if (search.quotes && search.quotes.length > 0) {
+          // This might not be very accurate for "Battery-grade" spot price.
+        }
+      } catch (e) {}
+
+      res.json(results);
+    } catch (error) {
+      console.error('Commodities fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch commodities data' });
     }
   });
 

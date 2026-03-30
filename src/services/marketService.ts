@@ -3,32 +3,12 @@ import { createAI, withRetry, parseJsonResponse, generateContentWithUsage, GEMIN
 import { getMarketOverviewPrompt, getDailyReportPrompt } from "./prompts";
 import { MarketOverview, GeminiConfig, Market } from "../types";
 import { getHistoryContext, saveAnalysisToHistory } from "./adminService";
-
-let marketCache: Record<string, { data: MarketOverview; timestamp: number }> = {};
-
-// Initialize cache from localStorage
-if (typeof window !== 'undefined') {
-  const savedCache = localStorage.getItem('marketCache');
-  if (savedCache) {
-    try {
-      marketCache = JSON.parse(savedCache);
-    } catch (e) {
-      console.error('Failed to parse market cache', e);
-    }
-  }
-}
+import { getBeijingDate } from "./dateUtils";
 
 export async function getMarketOverview(config?: GeminiConfig, market: Market = "A-Share", forceRefresh: boolean = false): Promise<MarketOverview> {
   const now = new Date();
-  const today = now.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  const today = getBeijingDate(now);
   
-  if (!forceRefresh && marketCache[market]) {
-    const cachedDate = new Date(marketCache[market].timestamp).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
-    if (cachedDate === today) {
-      return marketCache[market].data;
-    }
-  }
-
   const ai = createAI(config);
   const history = await getHistoryContext();
   const beijingDate = today;
@@ -43,13 +23,17 @@ export async function getMarketOverview(config?: GeminiConfig, market: Market = 
     console.warn('Indices tool failed, falling back to search:', e);
   }
 
-  const prompt = getMarketOverviewPrompt(indicesData, history, beijingDate, now, market);
+  const commoditiesData = await getCommoditiesData();
+  const prompt = getMarketOverviewPrompt(indicesData, commoditiesData, history, beijingDate, now, market);
 
   const response = await withRetry(async () => {
     const result = await generateContentWithUsage(ai, {
       model: config?.model || GEMINI_MODEL,
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }]
+      }
     });
     return result.text;
   });
@@ -57,26 +41,38 @@ export async function getMarketOverview(config?: GeminiConfig, market: Market = 
   const overview = parseJsonResponse<MarketOverview>(response);
   
   if (overview.indices && overview.indices.length > 0) {
-    marketCache[market] = { data: overview, timestamp: Date.now() };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('marketCache', JSON.stringify(marketCache));
-    }
     await saveAnalysisToHistory('market', overview);
   }
 
   return overview;
 }
 
+export async function getCommoditiesData(): Promise<any[]> {
+  try {
+    const res = await fetch('/api/stock/commodities');
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('Commodities fetch failed:', e);
+  }
+  return [];
+}
+
 export async function getDailyReport(marketOverview: MarketOverview, config?: GeminiConfig): Promise<string> {
   const ai = createAI(config);
   const now = new Date();
-  const beijingDate = now.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  const prompt = getDailyReportPrompt(marketOverview, now, beijingDate);
+  const beijingDate = getBeijingDate(now);
+  const commoditiesData = await getCommoditiesData();
+  const prompt = getDailyReportPrompt(marketOverview, commoditiesData, now, beijingDate);
 
   const response = await withRetry(async () => {
     const result = await generateContentWithUsage(ai, {
       model: config?.model || GEMINI_MODEL,
-      contents: prompt
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }]
+      }
     });
     return result.text;
   });

@@ -90,7 +90,7 @@ export function extractJsonBlock(raw: string): string {
     return cleaned.slice(start, end + 1);
   }
   
-  return cleaned;
+  throw new Error("Gemini returned a non-JSON response.");
 }
 
 export function parseJsonResponse<T>(raw: string): T {

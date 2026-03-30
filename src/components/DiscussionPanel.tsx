@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { AgentRole } from '../types';
+import { AgentRole, DataVerification } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X, Maximize2, Minimize2 } from 'lucide-react';
+import { User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X, Maximize2, Minimize2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAnalysisStore } from '../stores/useAnalysisStore';
@@ -72,6 +72,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = React.useState('');
   const stockSymbol = analysis?.stockInfo?.symbol;
+  const dataVerification = analysis?.dataVerification;
 
   const getWeightInfo = (role: AgentRole) => {
     return analystWeights?.find(w => w.role === role);
@@ -132,6 +133,25 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
             <div className="absolute inset-0 w-3 h-3 rounded-full bg-emerald-500 animate-ping opacity-75" />
           </div>
           <h3 className="text-base font-black uppercase tracking-[0.2em] text-slate-200">AI 专家组联席会议</h3>
+          {dataVerification && dataVerification.length > 0 && (
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+              dataVerification.every(v => v.isVerified) 
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+            }`}>
+              {dataVerification.every(v => v.isVerified) ? (
+                <>
+                  <ShieldCheck size={12} />
+                  数据已交叉验证
+                </>
+              ) : (
+                <>
+                  <AlertTriangle size={12} />
+                  检测到数据差异
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-4">
           {onToggleFullscreen && (
@@ -174,10 +194,66 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide bg-slate-900/80"
       >
+        {/* Data Integrity Report */}
+        {dataVerification && dataVerification.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-4xl mx-auto bg-slate-800/50 border border-emerald-500/20 rounded-2xl p-6 space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="text-emerald-400" size={20} />
+                <h4 className="text-sm font-black uppercase tracking-widest text-emerald-400">数据完整性与交叉验证报告</h4>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">实时监测已开启</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {dataVerification.map((item, idx) => (
+                <div key={idx} className="bg-slate-900/50 border border-white/5 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-300">{item.source}</span>
+                    {item.isVerified ? (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20">
+                        <CheckCircle2 size={10} />
+                        已验证
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded-full border border-rose-400/20">
+                        <AlertTriangle size={10} />
+                        存在差异
+                      </span>
+                    )}
+                  </div>
+                  {item.discrepancy && (
+                    <p className="text-xs text-rose-300/80 leading-relaxed italic">
+                      差异: {item.discrepancy}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${item.confidence > 90 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                          style={{ width: `${item.confidence}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-slate-500">{item.confidence}% 置信度</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-600 italic">
+                      {new Date(item.lastChecked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         <AnimatePresence initial={false}>
           {messages.map((msg, i) => (
             <motion.div
-              key={msg.id || `msg-${i}`}
+              key={msg.id || `msg-${i}-${msg.role}-${msg.timestamp}`}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ type: "spring", stiffness: 100, damping: 15 }}
@@ -323,3 +399,4 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
     </div>
   );
 };
+

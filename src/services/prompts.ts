@@ -1,11 +1,16 @@
 import { Market, MarketOverview, StockAnalysis, AgentMessage, Scenario } from "../types";
+import { formatCommoditiesToMarkdown } from "./formatUtils";
 
-export const getMarketOverviewPrompt = (indicesData: any[], history: any[], beijingDate: string, now: Date, market: Market = "A-Share") => `
+export const getMarketOverviewPrompt = (indicesData: any[], commoditiesData: any[], history: any[], beijingDate: string, now: Date, market: Market = "A-Share") => `
 Current date and time (UTC): ${now.toISOString()}
 Current date and time (China Standard Time): ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
 
 **REAL-TIME INDICES DATA (GROUND TRUTH)**:
 ${JSON.stringify(indicesData, null, 2)}
+
+**REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
+${formatCommoditiesToMarkdown(commoditiesData)}
+**IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the market trend or the specific sectors being discussed. If a commodity (e.g., Gold) has no material impact, DO NOT include it in your analysis.
 
 You are a professional ${market} markets analyst.
 Use Google Search grounding to gather the latest available public information.
@@ -40,7 +45,7 @@ Requirements:
    - Ensure the data is from TODAY'S trading session if the market is open. Note the source and time (with timezone, e.g. UTC+8) in the summary. Briefly mention the calculation used for indices (e.g., "Price 3000 - Prev Close 3010 = -10 (-0.33%)").
    - **DATA INTEGRITY CHECK**: If the "change" or "changePercent" is exactly 0, verify if the stock was suspended or if it's a non-trading day. Check the "Turnover" (成交额) to confirm trading activity.
 4. **SECTOR ANALYSIS (NEW)**: Analyze current hot sectors (板块) in the ${market} market and provide a conclusion for each.
-5. **COMMODITY ANALYSIS (NEW)**: Analyze major commodity trends (e.g., Gold, Oil, Copper) and provide expected analysis.
+5. **COMMODITY ANALYSIS (NEW)**: Analyze major commodity trends (e.g., Gold, Oil, Copper). **RELEVANCE (CRITICAL)**: Only analyze commodities that are currently driving the market or have a significant impact on the specific sectors being discussed.
 6. **RECOMMENDATIONS**: Provide recommended stocks or sectors in the ${market} market based on the above analysis.
 7. Include exactly 5 major financial news items from the latest market day for the ${market} market.
 8. Each news item must have title, source, time, url, and summary.
@@ -105,12 +110,16 @@ JSON schema:
 }
 `.trim();
 
-export const getAnalyzeStockPrompt = (symbol: string, market: Market, realtimeData: any, history: any[], beijingDate: string, beijingShortDate: string, now: Date) => `
+export const getAnalyzeStockPrompt = (symbol: string, market: Market, realtimeData: any, commoditiesData: any[], history: any[], beijingDate: string, beijingShortDate: string, now: Date) => `
 Current date and time (UTC): ${now.toISOString()}
 Current date and time (China Standard Time): ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
 
 **REAL-TIME DATA TOOL OUTPUT (ABSOLUTE GROUND TRUTH)**:
 ${realtimeData ? JSON.stringify(realtimeData, null, 2) : "No real-time data available from tool. Use Google Search grounding instead."}
+
+**REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
+${formatCommoditiesToMarkdown(commoditiesData)}
+**IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the stock's industry or cost structure. If a commodity (e.g., Gold) has no material impact on the stock (e.g., a Medical Device company), DO NOT include it in the analysis.
 
 You are a professional equity analyst.
 Analyze stock "${symbol}" in the ${market} market using the latest available public information and Google Search grounding.
@@ -154,6 +163,17 @@ Requirements:
 4. **FUNDAMENTAL DATA (NEW)**: Provide specific fundamental data (e.g., PE, PB, ROE, EPS, Revenue Growth).
 5. **VALUATION LEVEL (NEW)**: Provide current "water level" (水位) - valuation percentile compared to historical data.
 6. **DEEP FUNDAMENTAL ANALYSIS (CRITICAL)**: 
+   - **INDUSTRY-SPECIFIC LOGIC (CRITICAL)**: Avoid boilerplate analysis. You MUST identify the 3 most critical value drivers for this SPECIFIC stock (e.g., for Mindray: R&D efficiency, healthcare policy, overseas expansion; for a tech stock: compute power costs, user growth). **Use Google Search to find these specific drivers.**
+   - **FULL-DIMENSIONAL PENETRATION (NEW)**: Do not just look at financial statements. Penetrate to the business level: analyze management quality, supply chain control, customer stickiness, and technological moats.
+   - **FORWARD-LOOKING JUDGMENT (NEW)**: Based on your research, provide a high-conviction prediction for the next 2-4 quarters. Identify potential inflection points or trend continuations. **PREVENT OVERCONFIDENCE (CRITICAL)**: If key evidence for a forward-looking judgment is missing, you MUST explicitly label it as "Logical Gap due to Missing Information" (信息缺失导致的逻辑断层) instead of forcing a prediction.
+   - **SEARCH NOISE FILTERING (MANDATORY)**: When performing penetration research, prioritize official announcements, authoritative media, deep research reports, and industry data. **Be extremely cautious** and filter out unverified forum rumors, marketing content, or social media noise.
+   - **TABLE 1: REAL-TIME CORE INDICATORS & DEVIATION (MANDATORY)**: Must include columns: 指标 (2026E), 实时数值, 市场共识预期, 偏离度 (%), 备注. Include EPS, PE (Forward), ROE, Dividend Yield. **DATA CONSISTENCY (CRITICAL)**: Prioritize the latest real-time data from search and explicitly label the data date. **OUTLIER HANDLING**: If consensus data is missing (e.g., for niche small-caps), you MUST state "Estimated based on historical averages" or "Missing Information" instead of making up data.
+   - **TABLE 2: MACRO/INDUSTRY MONITORING & COST ANCHORS (MANDATORY)**: Must include columns: 关键原材料/指数, 当前价格, 近 30 日涨跌幅, 成本传导逻辑. Use industry-specific variables.
+   - **EXPECTATION GAP IDENTIFICATION**: Identify market blind spots and Alpha sources.
+   - **TARGET PRICE & SENTIMENT**: Provide a 6-month target range (with confidence interval) and a sentiment score (0-100). **CONFIDENCE INTERVAL LOGIC (NEW)**: Adjust the interval width based on industry volatility. High-volatility sectors (e.g., crypto, concept stocks) should have wider intervals; low-volatility sectors (e.g., utilities) should have narrower intervals.
+   - **EVIDENCE LEVEL (MANDATORY)**: When identifying these critical value drivers, you MUST label the source and its "Evidence Level" (证据级别) (e.g., "Mentioned in financial report", "Mainstream research consensus", "Third-party real-time monitoring").
+   - **REVERSE VERIFICATION (CRITICAL)**: After identifying the core indicators, you MUST ask and answer: "If this indicator changes by 10% in an unfavorable direction, how much impact will the company's net profit suffer?" Provide a specific quantitative estimate.
+   - **RELEVANCE CHECK (STRICT)**: **DO NOT** include irrelevant macro variables (e.g., Gold/Oil prices for a medical device company) in your analysis or sensitivity tables unless there is a direct, logical causal link. If you include a macro variable, you MUST explain the specific transmission mechanism (e.g., "Oil price affects plastic casing costs for medical devices"). If no direct link exists, use industry-specific variables (e.g., "Medical Insurance Reimbursement Rates") instead.
    - **LOOK THROUGH SURFACE DATA**: Do NOT just report PE, PB, or reported profits. These can be misleading (迷惑数据).
    - **PENETRATE TO OPERATIONS**: Analyze actual operating cash flow, asset turnover, inventory cycles, and R&D efficiency.
    - **NARRATIVE VS DATA CONSISTENCY**: Detect if management's growth narrative (e.g., "AI transformation") matches actual financial data (e.g., R&D Efficiency, CAPEX). If there's a mismatch, flag it.
@@ -299,11 +319,15 @@ JSON schema:
 }
 `.trim();
 
-export const getChatMessagePrompt = (userMessage: string, analysis: StockAnalysis) => `
+export const getChatMessagePrompt = (userMessage: string, analysis: StockAnalysis, commoditiesData: any[]) => `
 You are a professional equity analyst answering a follow-up question from a user.
 
 Existing analysis JSON:
 ${JSON.stringify(analysis)}
+
+**REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
+${formatCommoditiesToMarkdown(commoditiesData)}
+**IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the user's question or the stock's industry.
 
 User question:
 ${userMessage}
@@ -327,7 +351,7 @@ export const getStockReportPrompt = (analysis: StockAnalysis) => `
     请使用 Markdown 格式，语气专业且客观。
 `.trim();
 
-export const getDiscussionReportPrompt = (analysis: StockAnalysis, discussion: AgentMessage[], scenarios?: Scenario[], backtestResult?: any) => `
+export const getDiscussionReportPrompt = (analysis: StockAnalysis, discussion: AgentMessage[], commoditiesData: any[], scenarios?: Scenario[], backtestResult?: any) => `
     基于以下个股分析数据、AI 专家组研讨记录以及场景概率分布，生成一份完整的个股深度研究报告。
     
     报告应包含：
@@ -348,6 +372,10 @@ export const getDiscussionReportPrompt = (analysis: StockAnalysis, discussion: A
     
     分析数据：
     ${JSON.stringify(analysis)}
+
+    **REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
+    ${JSON.stringify(commoditiesData, null, 2)}
+    **IMPORTANT**: You MUST use the exact values from the data above for Gold, Copper, and Oil in your report.
     
     研讨记录：
     ${discussion.map(m => `[${m.role}]: ${m.content}`).join('\n\n')}
@@ -357,7 +385,7 @@ export const getDiscussionReportPrompt = (analysis: StockAnalysis, discussion: A
     回答语言：简体中文。
 `.trim();
 
-export const getDailyReportPrompt = (marketOverview: MarketOverview, now: Date, beijingDate: string) => `
+export const getDailyReportPrompt = (marketOverview: MarketOverview, commoditiesData: any[], now: Date, beijingDate: string) => `
     Current date and time: ${now.toISOString()}
     
     You are a professional China-focused markets analyst.
@@ -365,6 +393,10 @@ export const getDailyReportPrompt = (marketOverview: MarketOverview, now: Date, 
     
     Market Overview Data (for context):
     ${JSON.stringify(marketOverview)}
+
+    **REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
+    ${formatCommoditiesToMarkdown(commoditiesData)}
+    **IMPORTANT**: You MUST use the exact values from the table above for Gold, Copper, and Oil in your report.
     
     Requirements:
     1. Summarize the A-share market tone (previous day or weekend news).

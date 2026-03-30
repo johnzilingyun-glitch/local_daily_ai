@@ -28,16 +28,16 @@ async function testMarketOverviewApi() {
 async function testAdminApis() {
   console.log('\nTesting Admin APIs...');
   try {
-    const history = await axios.get('http://localhost:3000/api/admin/history-context');
+    const history = await axios.get('http://localhost:3000/api/history/context');
     console.log('History Context API Success, items:', history.data.length);
     
-    const save = await axios.post('http://localhost:3000/api/admin/save-analysis', {
+    const save = await axios.post('http://localhost:3000/api/history/save', {
       type: 'test',
       data: { message: 'test' }
     });
     console.log('Save Analysis API Success:', save.data.success);
     
-    const logs = await axios.get('http://localhost:3000/api/admin/optimization-logs');
+    const logs = await axios.get('http://localhost:3000/api/logs/optimization');
     console.log('Optimization Logs API Success, items:', logs.data.length);
   } catch (error: any) {
     console.error('Admin API Error:', error.message);

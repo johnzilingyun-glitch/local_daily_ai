@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ExternalLink, 
   CheckCircle2, 
@@ -40,7 +40,8 @@ import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Market, MarketOverview, StockAnalysis, AgentMessage, GeminiConfig, Scenario, Catalyst, SensitivityFactor, ExpectationGap, AnalystWeight, CalculationResult, TradingPlanVersion, AgentDiscussion } from './types';
-import { analyzeStock, getMarketOverview, sendChatMessage, getDailyReport, getStockReport, getChatReport, startAgentDiscussion, getDiscussionReport, saveAnalysisToHistory } from './services/aiService';
+import { analyzeStock, getMarketOverview, sendChatMessage, getDailyReport, getStockReport, getChatReport, startAgentDiscussion, getDiscussionReport, saveAnalysisToHistory, getHistoryContext } from './services/aiService';
+import { getBeijingDate, generateHistoryItemKey } from './services/dateUtils';
 import { useConfigStore } from './stores/useConfigStore';
 import { useUIStore } from './stores/useUIStore';
 import { useMarketStore } from './stores/useMarketStore';
@@ -107,7 +108,9 @@ export default function App() {
     marketOverviews = {}, setMarketOverview, marketLastUpdatedTimes = {}, setMarketLastUpdated, // Enhanced for per-market stats
     dailyReport, setDailyReport,
     historyItems, setHistoryItems,
-    optimizationLogs, setOptimizationLogs
+    optimizationLogs, setOptimizationLogs,
+    overviewMarket, setOverviewMarket,
+    _hasHydrated
   } = useMarketStore();
 
   const {
@@ -137,7 +140,12 @@ export default function App() {
     resetAnalysis
   } = useAnalysisStore();
 
-  const [overviewMarket, setOverviewMarket] = useState<Market>("A-Share");
+  const isComposing = useRef(false);
+  const [localSymbol, setLocalSymbol] = useState(symbol);
+
+  useEffect(() => {
+    setLocalSymbol(symbol);
+  }, [symbol]);
 
   // Helper for Feishu Reports
   const sendReport = async (report: string, type: string, data?: any) => {
@@ -207,6 +215,7 @@ export default function App() {
       
       // Update history with latest discussion
       await saveAnalysisToHistory('stock', finalAnalysis);
+      void fetchAdminData(true);
     } catch (err) {
       console.error('Reviewer failed:', err);
       setDiscussionMessages([...updatedMessages, {
@@ -222,41 +231,49 @@ export default function App() {
   };
 
   const fetchMarketOverview = useCallback(async (forceRefresh = false) => {
-    const currentCache = marketOverviews[overviewMarket];
-    const lastUpdate = marketLastUpdatedTimes[overviewMarket];
+    const state = useMarketStore.getState();
+    const currentCache = state.marketOverviews[overviewMarket];
+    const lastUpdate = state.marketLastUpdatedTimes[overviewMarket];
     
-    // isToday check helper
-    const isToday = lastUpdate && new Date(lastUpdate).toDateString() === new Date().toDateString();
+    // Use Shanghai time for consistency with market service
+    const now = new Date();
+    const todayStr = getBeijingDate(now);
+    const lastUpdateStr = lastUpdate ? getBeijingDate(new Date(lastUpdate)) : null;
+    const isToday = lastUpdateStr === todayStr;
 
     // Skip network request if we have today's valid cache and not forcing a refresh
     if (!forceRefresh && currentCache && isToday) {
+      console.log(`[Market] Using cached data for ${overviewMarket}`);
+      setOverviewLoading(false);
       return;
     }
 
+    console.log(`[Market] Fetching fresh data for ${overviewMarket} (Reason: ${!currentCache ? 'No cache' : !isToday ? 'Stale data' : 'Force refresh'})`);
     setOverviewLoading(true);
     setOverviewError(null);
     try {
       const data = await getMarketOverview(geminiConfig, overviewMarket, forceRefresh);
       setMarketOverview(overviewMarket, data);
       setMarketLastUpdated(overviewMarket, Date.now());
+      void fetchAdminData(true);
     } catch (err) {
       console.error('Failed to fetch market overview:', err);
       setOverviewError(err instanceof Error ? err.message : '无法加载市场概览。');
     } finally {
       setOverviewLoading(false);
     }
-  }, [geminiConfig, overviewMarket, setMarketOverview, setMarketLastUpdated, setOverviewError, setOverviewLoading, marketOverviews, marketLastUpdatedTimes]);
+  }, [geminiConfig, overviewMarket, setMarketOverview, setMarketLastUpdated, setOverviewError, setOverviewLoading]);
 
   const marketOverview = marketOverviews[overviewMarket];
   const marketLastUpdated = marketLastUpdatedTimes[overviewMarket];
 
-  const fetchAdminData = useCallback(async () => {
+  const fetchAdminData = useCallback(async (force = false) => {
     try {
-      const [historyRes, logsRes] = await Promise.all([
-        fetch('/api/admin/history-context'),
-        fetch('/api/admin/optimization-logs')
+      const [history, logsRes] = await Promise.all([
+        getHistoryContext(),
+        fetch('/api/logs/optimization')
       ]);
-      if (historyRes.ok) setHistoryItems(await historyRes.json());
+      setHistoryItems(history);
       if (logsRes.ok) setOptimizationLogs(await logsRes.json());
     } catch (err) {
       console.error('Failed to fetch admin data:', err);
@@ -264,9 +281,11 @@ export default function App() {
   }, [setHistoryItems, setOptimizationLogs]);
 
   useEffect(() => {
-    void fetchMarketOverview(false);
-    void fetchAdminData();
-  }, [fetchMarketOverview, fetchAdminData]);
+    if (_hasHydrated) {
+      void fetchMarketOverview(false);
+      void fetchAdminData();
+    }
+  }, [_hasHydrated, fetchMarketOverview, fetchAdminData]);
 
   useEffect(() => {
     if (autoRefreshInterval && autoRefreshInterval > 0) {
@@ -313,7 +332,7 @@ export default function App() {
       const success = await sendReport(report, 'chat', { stock: analysis.stockInfo?.name || 'Unknown', history: chatHistory });
 
       if (success) {
-        void fetch('/api/admin/log', {
+        void fetch('/api/logs/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -339,7 +358,7 @@ export default function App() {
       const success = await sendReport(report, 'discussion', { stock: analysis.stockInfo?.name || 'Unknown', discussionCount: discussionMessages.length });
 
       if (success) {
-        void fetch('/api/admin/log', {
+        void fetch('/api/logs/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -400,6 +419,7 @@ export default function App() {
         
         // Save to history after discussion is complete
         await saveAnalysisToHistory('stock', finalAnalysis);
+        void fetchAdminData(true);
       } catch (err) {
         console.error('Agent discussion failed:', err);
       } finally {
@@ -436,6 +456,7 @@ export default function App() {
       };
       setAnalysis(updatedAnalysis);
       await saveAnalysisToHistory('stock', updatedAnalysis);
+      void fetchAdminData(true);
     } catch (err) {
       console.error(err);
       setChatError(err instanceof Error ? err.message : '对话出错，请稍后重试。');
@@ -648,8 +669,21 @@ export default function App() {
                 <input
                   type="text"
                   placeholder="股票代码/拼音 (如 GZMT)"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  value={localSymbol}
+                  onCompositionStart={() => { isComposing.current = true; }}
+                  onCompositionEnd={(e) => {
+                    isComposing.current = false;
+                    const val = e.currentTarget.value.toUpperCase();
+                    setLocalSymbol(val);
+                    setSymbol(val);
+                  }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLocalSymbol(val);
+                    if (!isComposing.current) {
+                      setSymbol(val.toUpperCase());
+                    }
+                  }}
                   className="h-12 w-full font-mono text-base font-bold rounded-xl border border-slate-600 bg-slate-800/80 pl-12 pr-4 text-white transition-all placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-inner"
                 />
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400" size={20} />
@@ -1805,7 +1839,7 @@ export default function App() {
 
                   <div className="mb-6 max-h-96 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                     {chatHistory?.map((msg, idx) => (
-                      <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div key={`${msg.role}-${idx}-${msg.content.substring(0, 20)}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.role === 'user' ? 'rounded-tr-none bg-emerald-600 text-white' : 'rounded-tl-none bg-zinc-800 text-zinc-300'}`}>
                           {msg.content}
                         </div>
@@ -1965,9 +1999,9 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
                   {overviewLoading ? Array(5).fill(0).map((_, i) => (
-                    <div key={i} className="h-24 animate-pulse rounded-2xl border border-zinc-800 bg-zinc-900/50" />
+                    <div key={`skeleton-${i}`} className="h-24 animate-pulse rounded-2xl border border-zinc-800 bg-zinc-900/50" />
                   )) : marketOverview?.indices?.map((index, i) => (
-                    <div key={i} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+                    <div key={index.symbol || index.name || i} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
                       <p className="mb-1 text-xs font-medium text-zinc-500">{index.name}</p>
                       <p className="text-lg font-bold tracking-tight">{index.price.toLocaleString()}</p>
                       <div className={cn('mt-1 flex items-center gap-1 font-mono text-xs', index.change >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
@@ -2000,7 +2034,7 @@ export default function App() {
                         </h3>
                         <div className="space-y-3">
                           {marketOverview.sectorAnalysis?.map((sector, i) => (
-                            <div key={i} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
+                            <div key={sector.name || i} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-bold text-zinc-200">{sector.name}</span>
                                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase", 
@@ -2020,7 +2054,7 @@ export default function App() {
                         </h3>
                         <div className="space-y-3">
                           {marketOverview.commodityAnalysis?.map((item, i) => (
-                            <div key={i} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
+                            <div key={item.name || i} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-bold text-zinc-200">{item.name}</span>
                                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase", 
@@ -2041,7 +2075,7 @@ export default function App() {
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {marketOverview.recommendations?.map((rec, i) => (
-                          <div key={i} className="rounded-xl bg-zinc-800/30 p-4 border border-zinc-700/30">
+                          <div key={`${rec.type}-${rec.name}-${i}`} className="rounded-xl bg-zinc-800/30 p-4 border border-zinc-700/30">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold uppercase">{rec.type}</span>
                               <span className="font-bold text-zinc-100">{rec.name}</span>
@@ -2063,9 +2097,9 @@ export default function App() {
                   </h2>
                   <div className="space-y-4">
                     {overviewLoading ? Array(3).fill(0).map((_, i) => (
-                      <div key={i} className="h-32 animate-pulse rounded-3xl border border-zinc-800 bg-zinc-900/50" />
+                      <div key={`news-skeleton-${i}`} className="h-32 animate-pulse rounded-3xl border border-zinc-800 bg-zinc-900/50" />
                     )) : marketOverview?.topNews?.map((news, i) => (
-                      <a key={i} href={news.url} target="_blank" rel="noopener noreferrer" className="group block rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6 transition-all hover:border-emerald-500/30">
+                      <a key={news.url || news.title || i} href={news.url} target="_blank" rel="noopener noreferrer" className="group block rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6 transition-all hover:border-emerald-500/30">
                         <div className="mb-2 flex items-start justify-between gap-4">
                           <h3 className="text-lg font-semibold transition-colors group-hover:text-emerald-400">{news.title}</h3>
                           <ExternalLink size={16} className="mt-1 shrink-0 text-zinc-600" />
@@ -2124,7 +2158,7 @@ export default function App() {
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   {optimizationLogs.slice().reverse().map((log, i) => (
                     <div 
-                      key={i} 
+                      key={`${log.timestamp}-${log.field}-${i}`} 
                       className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 text-xs cursor-pointer hover:border-emerald-500/30 transition-all group"
                       onClick={() => setSelectedDetail({ type: 'log', data: log })}
                     >
@@ -2148,27 +2182,30 @@ export default function App() {
                   分析备份历史
                 </h2>
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                  {historyItems.map((item, i) => (
-                    <div 
-                      key={i} 
-                      className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 text-xs cursor-pointer hover:border-blue-500/30 transition-all group"
-                      onClick={() => setSelectedDetail({ type: 'history', data: item })}
-                    >
-                      <div className="flex justify-between mb-2">
-                        <span className="font-bold text-blue-400 uppercase tracking-wider">
-                          {item.stockInfo ? `STOCK: ${item.stockInfo.symbol}` : 'MARKET OVERVIEW'}
-                        </span>
-                        <span className="text-zinc-600">{item.stockInfo?.lastUpdated || 'RECENT'}</span>
+                  {historyItems.map((item, i) => {
+                    const itemKey = item.id || (item.stockInfo?.symbol ? `stock-${item.stockInfo.symbol}-${item.stockInfo.lastUpdated}-${i}` : `market-${i}`);
+                    return (
+                      <div 
+                        key={itemKey} 
+                        className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 text-xs cursor-pointer hover:border-blue-500/30 transition-all group"
+                        onClick={() => setSelectedDetail({ type: 'history', data: item })}
+                      >
+                        <div className="flex justify-between mb-2">
+                          <span className="font-bold text-blue-400 uppercase tracking-wider">
+                            {item.stockInfo ? `STOCK: ${item.stockInfo.symbol}` : 'MARKET OVERVIEW'}
+                          </span>
+                          <span className="text-zinc-600">{item.stockInfo?.lastUpdated || 'RECENT'}</span>
+                        </div>
+                        <p className="text-zinc-400 line-clamp-2 mb-2">
+                          {item.summary || item.marketSummary}
+                        </p>
+                        <div className="flex items-center gap-1 text-[10px] text-blue-500/50 group-hover:text-blue-500 transition-colors">
+                          <Newspaper size={10} />
+                          点击展开深度分析报告
+                        </div>
                       </div>
-                      <p className="text-zinc-400 line-clamp-2 mb-2">
-                        {item.summary || item.marketSummary}
-                      </p>
-                      <div className="flex items-center gap-1 text-[10px] text-blue-500/50 group-hover:text-blue-500 transition-colors">
-                        <Newspaper size={10} />
-                        点击展开深度分析报告
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

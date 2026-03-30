@@ -44,7 +44,7 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       loading: false,
-      overviewLoading: true,
+      overviewLoading: false,
       overviewError: null,
       analysisError: null,
       chatError: null,

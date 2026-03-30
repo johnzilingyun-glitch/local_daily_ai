@@ -151,6 +151,7 @@ export interface StockAnalysis {
     timeframe: string;
     logic: string;
   }[];
+  dataVerification?: DataVerification[];
   capitalFlow?: {
     northboundFlow: string;
     institutionalHoldings: string;
@@ -251,6 +252,7 @@ export interface AgentDiscussion {
   analystWeights?: AnalystWeight[];
   calculations?: CalculationResult[];
   dataFreshnessStatus?: "Fresh" | "Stale" | "Warning";
+  dataVerification?: DataVerification[];
   backtestResult?: {
     previousDate: string;
     previousRecommendation: string;
@@ -279,6 +281,14 @@ export interface AgentDiscussion {
     keyMilestones: string[];
     exitTriggers: string[];
   };
+}
+
+export interface DataVerification {
+  source: string;
+  isVerified: boolean;
+  discrepancy?: string;
+  confidence: number; // 0-100
+  lastChecked: string;
 }
 
 export interface GeminiConfig {
