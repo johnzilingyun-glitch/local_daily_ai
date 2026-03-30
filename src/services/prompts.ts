@@ -119,7 +119,10 @@ ${realtimeData ? JSON.stringify(realtimeData, null, 2) : "No real-time data avai
 
 **REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
 ${formatCommoditiesToMarkdown(commoditiesData)}
-**IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the stock's industry or cost structure. If a commodity (e.g., Gold) has no material impact on the stock (e.g., a Medical Device company), DO NOT include it in the analysis.
+**IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the stock's industry or cost structure. 
+- **DYNAMIC VARIABLE SELECTION (MANDATORY)**: If the provided commodities (Gold, Oil, Copper, etc.) are NOT highly relevant to the target stock, you MUST **ignore them completely**. 
+- **SEARCH-DRIVEN ANCHORS**: Instead, use Google Search to identify the 2-3 most critical macro variables or raw material prices for this specific stock (e.g., Lithium Carbonate for EV batteries, Pulp for paper, DRAM prices for semiconductors, Freight rates for shipping, etc.).
+- **FAILURE TO COMPLY**: Including irrelevant variables (like Oil for a software company) will be treated as a "hallucination/logic failure".
 
 You are a professional equity analyst.
 Analyze stock "${symbol}" in the ${market} market using the latest available public information and Google Search grounding.
@@ -168,7 +171,9 @@ Requirements:
    - **FORWARD-LOOKING JUDGMENT (NEW)**: Based on your research, provide a high-conviction prediction for the next 2-4 quarters. Identify potential inflection points or trend continuations. **PREVENT OVERCONFIDENCE (CRITICAL)**: If key evidence for a forward-looking judgment is missing, you MUST explicitly label it as "Logical Gap due to Missing Information" (信息缺失导致的逻辑断层) instead of forcing a prediction.
    - **SEARCH NOISE FILTERING (MANDATORY)**: When performing penetration research, prioritize official announcements, authoritative media, deep research reports, and industry data. **Be extremely cautious** and filter out unverified forum rumors, marketing content, or social media noise.
    - **TABLE 1: REAL-TIME CORE INDICATORS & DEVIATION (MANDATORY)**: Must include columns: 指标 (2026E), 实时数值, 市场共识预期, 偏离度 (%), 备注. Include EPS, PE (Forward), ROE, Dividend Yield. **DATA CONSISTENCY (CRITICAL)**: Prioritize the latest real-time data from search and explicitly label the data date. **OUTLIER HANDLING**: If consensus data is missing (e.g., for niche small-caps), you MUST state "Estimated based on historical averages" or "Missing Information" instead of making up data.
-   - **TABLE 2: MACRO/INDUSTRY MONITORING & COST ANCHORS (MANDATORY)**: Must include columns: 关键原材料/指数, 当前价格, 近 30 日涨跌幅, 成本传导逻辑. Use industry-specific variables.
+   - **TABLE 2: 行业核心变量与宏观锚点 (DYNAMIC)**: Must include columns: 关键变量/原材料（需标注单位，如：美元/吨）, 当前价格/数值, 逻辑权重（需标注哪个是“第一驱动力”）, 近 30 日涨跌幅, 成本/收入传导逻辑。
+   - **变量选择与容错 (CRITICAL)**: 严禁死板地引用无关大宗商品。你必须基于 Google Search 查询到的、与该股票相关度最高的行业核心变量填充此表。**异常值容错**：若搜索不到特定行业的实时价格（如某些稀有化学品），允许使用“行业替代指标”或“近一个月的趋势描述”，但严禁编造具体数值。
+   - **单位标准化 (MANDATORY)**: 强制要求在表格中注明单位（如：美元/吨、点位、人民币/片），防止跨市场分析时产生数值混淆。
    - **EXPECTATION GAP IDENTIFICATION**: Identify market blind spots and Alpha sources.
    - **TARGET PRICE & SENTIMENT**: Provide a 6-month target range (with confidence interval) and a sentiment score (0-100). **CONFIDENCE INTERVAL LOGIC (NEW)**: Adjust the interval width based on industry volatility. High-volatility sectors (e.g., crypto, concept stocks) should have wider intervals; low-volatility sectors (e.g., utilities) should have narrower intervals.
    - **EVIDENCE LEVEL (MANDATORY)**: When identifying these critical value drivers, you MUST label the source and its "Evidence Level" (证据级别) (e.g., "Mentioned in financial report", "Mainstream research consensus", "Third-party real-time monitoring").
@@ -375,7 +380,7 @@ export const getDiscussionReportPrompt = (analysis: StockAnalysis, discussion: A
 
     **REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
     ${JSON.stringify(commoditiesData, null, 2)}
-    **IMPORTANT**: You MUST use the exact values from the data above for Gold, Copper, and Oil in your report.
+    **IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the stock. If the provided commodities are not relevant, use Google Search to find the most critical industry-specific variables instead.
     
     研讨记录：
     ${discussion.map(m => `[${m.role}]: ${m.content}`).join('\n\n')}
@@ -396,7 +401,7 @@ export const getDailyReportPrompt = (marketOverview: MarketOverview, commodities
 
     **REAL-TIME COMMODITY DATA (GROUND TRUTH)**:
     ${formatCommoditiesToMarkdown(commoditiesData)}
-    **IMPORTANT**: You MUST use the exact values from the table above for Gold, Copper, and Oil in your report.
+    **IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the market trend or the specific sectors being discussed.
     
     Requirements:
     1. Summarize the A-share market tone (previous day or weekend news).

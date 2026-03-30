@@ -32,9 +32,9 @@ export async function startAgentDiscussion(
     **REAL-TIME COMMODITY DATA (GROUND TRUTH - 2026-03-30)**:
     ${formatCommoditiesToMarkdown(commoditiesData)}
     **STRICT RELEVANCE CONSTRAINT (CRITICAL)**: Use the commodity data above ONLY if it is a DIRECT and MATERIAL cost or revenue driver for the stock's industry. 
-    - For example: Analyze Oil for airlines/shipping, Copper for electronics/power, Gold for jewelry/mining.
-    - **DO NOT** analyze Oil/Gold for Medical Devices, Software, or Consumer Goods unless there is a specific, documented macro link. 
-    - **FAILURE TO COMPLY** will be flagged as a "serious logical error" by the Professional Reviewer.
+    - **DYNAMIC VARIABLE SELECTION (MANDATORY)**: If the provided commodities (Gold, Oil, Copper, etc.) are NOT highly relevant to the target stock, you MUST **ignore them completely**. 
+    - **SEARCH-DRIVEN ANCHORS**: Instead, use Google Search to identify the 2-3 most critical macro variables or raw material prices for this specific stock (e.g., Lithium Carbonate for EV batteries, Pulp for paper, DRAM prices for semiconductors, Freight rates for shipping, etc.).
+    - **FAILURE TO COMPLY**: Including irrelevant variables (like Oil for a software company) will be treated as a "hallucination/logic failure".
     - Prioritize industry-specific variables: Policy changes, R&D progress, supply chain bottlenecks, exchange rates, or sector-specific raw materials.
 
     **团队成员（8位，按发言顺序）**：
@@ -47,7 +47,9 @@ export async function startAgentDiscussion(
        - **增加“反向验证” (CRITICAL)**：在给出核心指标后，必须自问并回答：“如果这个指标向不利方向变动 10%，该公司的净利润会受到多大冲击？”请给出具体的量化估算。
        - **前瞻性逻辑判断 (NEW)**：基于穿透调研与预期偏差，给出对未来 2-4 个季度的**高胜率预测判断**。**防止“过度自信的幻觉” (CRITICAL)**：如果缺乏支撑前瞻判断的关键证据，必须明确标注“信息缺失导致的逻辑断层”，而非强行预测。
        - **搜索噪音过滤 (MANDATORY)**：在进行穿透式调研时，必须优先采信官方公告、权威媒体、深度研报和行业数据。**严厉警惕并过滤**无来源的论坛传闻、营销号“小作文”或社交媒体噪音。
-       - **表格 2：宏观监控与商品成本锚点 (MANDATORY)**：必须包含以下列：关键原材料/指数、当前价格、近 30 日涨跌幅、成本传导逻辑。**严禁死板地引用无关大宗商品**，必须基于 Google Search 查询到的行业核心变量。
+       - **表格 2：行业核心变量与宏观锚点 (DYNAMIC)**：必须包含以下列：关键变量/原材料（需标注单位，如：美元/吨）、当前价格/数值、逻辑权重（需标注哪个是“第一驱动力”）、近 30 日趋势、成本/收入传导逻辑。
+       - **变量选择与容错 (CRITICAL)**：严禁死板地引用无关大宗商品。你必须基于 Google Search 查询到的、与该股票相关度最高的行业核心变量填充此表。**异常值容错**：若搜索不到特定行业的实时价格（如某些稀有化学品），允许使用“行业替代指标”或“近一个月的趋势描述”，但严禁编造具体数值。
+       - **单位标准化 (MANDATORY)**：强制要求在表格中注明单位（如：美元/吨、点位、人民币/片），防止跨市场分析时产生数值混淆。
        - **预期偏差识别 (Expectation Gap)**：必须明确识别市场共识中的盲点，指出 Alpha 来源。
        - **目标价与情绪评分 (MANDATORY)**：必须给出 6 个月目标区间（含置信区间）及情绪评分（0-100）。**置信区间逻辑 (NEW)**：根据行业波动率自动调整区间宽度。高波动行业（如数字货币、纯概念股）应放宽区间；低波动行业（如公用事业、长江电力）应收窄区间。
        - **内容要求**：必须包含上述 2 个 Markdown 表格，所有关键数据必须有明确的时间戳和来源标注（Source: ...）。
