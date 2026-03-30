@@ -1259,7 +1259,7 @@ export default function App() {
                           )}
 
                           {discussionMessages.filter(m => m.role === "Moderator").map((m, i) => (
-                            <div key={m.id || `mod-${m.role}-${i}`} className="relative">
+                            <div key={`mod-${i}-${m.id || m.role}`} className="relative">
                               <div className="absolute -left-2 top-0 bottom-0 w-1 bg-emerald-500/50 rounded-full" />
                               <div className="prose prose-invert prose-sm max-w-none pl-4">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -1498,7 +1498,7 @@ export default function App() {
                   </div>
 
                   {analysis.fundamentals && (
-                    <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-6 border-t border-zinc-800/50 pt-8">
+                    <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 border-t border-zinc-800/50 pt-8">
                       <div className="p-3 rounded-2xl bg-zinc-800/30 border border-zinc-700/30">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">市盈率 PE</p>
                         <p className="text-sm font-bold text-zinc-200">{analysis.fundamentals.pe}</p>
@@ -1523,6 +1523,36 @@ export default function App() {
                         <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/60 mb-1">估值水位</p>
                         <p className="text-sm font-bold text-emerald-400">{analysis.fundamentals.valuationPercentile}</p>
                       </div>
+                      {analysis.fundamentals.netProfitGrowth && (
+                        <div className="p-3 rounded-2xl bg-zinc-800/30 border border-zinc-700/30">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">净利增长</p>
+                          <p className="text-sm font-bold text-zinc-200">{analysis.fundamentals.netProfitGrowth}</p>
+                        </div>
+                      )}
+                      {analysis.fundamentals.debtToEquity && (
+                        <div className="p-3 rounded-2xl bg-zinc-800/30 border border-zinc-700/30">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">资产负债率</p>
+                          <p className="text-sm font-bold text-zinc-200">{analysis.fundamentals.debtToEquity}</p>
+                        </div>
+                      )}
+                      {analysis.fundamentals.grossMargin && (
+                        <div className="p-3 rounded-2xl bg-zinc-800/30 border border-zinc-700/30">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">毛利率</p>
+                          <p className="text-sm font-bold text-zinc-200">{analysis.fundamentals.grossMargin}</p>
+                        </div>
+                      )}
+                      {analysis.fundamentals.netMargin && (
+                        <div className="p-3 rounded-2xl bg-zinc-800/30 border border-zinc-700/30">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">净利率</p>
+                          <p className="text-sm font-bold text-zinc-200">{analysis.fundamentals.netMargin}</p>
+                        </div>
+                      )}
+                      {analysis.fundamentals.dividendYield && (
+                        <div className="p-3 rounded-2xl bg-zinc-800/30 border border-zinc-700/30">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">股息率</p>
+                          <p className="text-sm font-bold text-zinc-200">{analysis.fundamentals.dividendYield}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1599,6 +1629,100 @@ export default function App() {
                           </p>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {(analysis.fundamentalTable || analysis.industryAnchors) && (
+                    <div className="mt-8 space-y-8 border-t border-zinc-800/50 pt-8">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                          <LayoutGrid size={18} className="text-blue-400" />
+                        </div>
+                        <h3 className="text-xl font-black tracking-tight text-white">基本面数据透视与分析</h3>
+                      </div>
+
+                      {analysis.fundamentalTable && analysis.fundamentalTable.length > 0 && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                            <Target size={14} className="text-emerald-500" />
+                            核心指标与预期偏差 (2026E)
+                          </h4>
+                          <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50">
+                            <table className="w-full text-left text-sm">
+                              <thead>
+                                <tr className="border-b border-zinc-800 bg-zinc-800/30">
+                                  <th className="px-4 py-3 font-bold text-zinc-400">指标</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400 text-right">实时数值</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400 text-right">市场共识</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400 text-right">偏离度</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400">备注</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-800">
+                                {analysis.fundamentalTable.map((item, i) => (
+                                  <tr key={`fund-table-${i}`} className="hover:bg-zinc-800/30 transition-colors">
+                                    <td className="px-4 py-3 font-medium text-zinc-200">{item.indicator}</td>
+                                    <td className="px-4 py-3 text-right font-mono text-white">{item.value}</td>
+                                    <td className="px-4 py-3 text-right font-mono text-zinc-400">{item.consensus}</td>
+                                    <td className={cn(
+                                      "px-4 py-3 text-right font-mono font-bold",
+                                      item.deviation.startsWith('-') ? "text-rose-400" : "text-emerald-400"
+                                    )}>
+                                      {item.deviation}
+                                    </td>
+                                    <td className="px-4 py-3 text-xs text-zinc-500 italic">{item.remark}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {analysis.industryAnchors && analysis.industryAnchors.length > 0 && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                            <Layers size={14} className="text-blue-500" />
+                            行业核心变量与宏观锚点
+                          </h4>
+                          <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50">
+                            <table className="w-full text-left text-sm">
+                              <thead>
+                                <tr className="border-b border-zinc-800 bg-zinc-800/30">
+                                  <th className="px-4 py-3 font-bold text-zinc-400">关键变量</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400 text-right">当前数值</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400 text-center">权重</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400 text-right">30日涨跌</th>
+                                  <th className="px-4 py-3 font-bold text-zinc-400">传导逻辑</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-800">
+                                {analysis.industryAnchors.map((anchor, i) => (
+                                  <tr key={`anchor-table-${i}`} className="hover:bg-zinc-800/30 transition-colors">
+                                    <td className="px-4 py-3 font-medium text-zinc-200">{anchor.variable}</td>
+                                    <td className="px-4 py-3 text-right font-mono text-white">{anchor.currentValue}</td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className={cn(
+                                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest",
+                                        anchor.weight.includes('第一') ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" : "bg-zinc-800 text-zinc-500"
+                                      )}>
+                                        {anchor.weight}
+                                      </span>
+                                    </td>
+                                    <td className={cn(
+                                      "px-4 py-3 text-right font-mono font-bold",
+                                      anchor.monthlyChange.startsWith('-') ? "text-rose-400" : "text-emerald-400"
+                                    )}>
+                                      {anchor.monthlyChange}
+                                    </td>
+                                    <td className="px-4 py-3 text-xs text-zinc-400 leading-relaxed">{anchor.logic}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1858,7 +1982,7 @@ export default function App() {
 
                   <div className="mb-6 max-h-96 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                     {chatHistory?.map((msg, idx) => (
-                      <div key={msg.id || `chat-${msg.role}-${idx}-${msg.content.substring(0, 10)}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div key={`chat-${idx}-${msg.id || msg.role}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.role === 'user' ? 'rounded-tr-none bg-emerald-600 text-white' : 'rounded-tl-none bg-zinc-800 text-zinc-300'}`}>
                           {msg.content}
                         </div>
@@ -2020,7 +2144,7 @@ export default function App() {
                   {overviewLoading ? Array(5).fill(0).map((_, i) => (
                     <div key={`skeleton-index-${i}`} className="h-24 animate-pulse rounded-2xl border border-zinc-800 bg-zinc-900/50" />
                   )) : marketOverview?.indices?.map((index, i) => (
-                    <div key={index.symbol || `index-${i}-${index.name}`} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+                    <div key={`index-${i}-${index.symbol || index.name}`} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
                       <p className="mb-1 text-xs font-medium text-zinc-500">{index.name}</p>
                       <p className="text-lg font-bold tracking-tight">{index.price.toLocaleString()}</p>
                       <div className={cn('mt-1 flex items-center gap-1 font-mono text-xs', index.change >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
@@ -2202,7 +2326,7 @@ export default function App() {
                 </h2>
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   {historyItems.map((item, i) => {
-                    const itemKey = item.id ? `history-id-${item.id}` : (item.stockInfo?.symbol ? `stock-${item.stockInfo.symbol}-${item.stockInfo.lastUpdated}-${i}` : `market-${i}`);
+                    const itemKey = `history-${i}-${item.id || item.stockInfo?.symbol || 'market'}`;
                     return (
                       <div 
                         key={itemKey} 

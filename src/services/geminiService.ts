@@ -34,14 +34,19 @@ export async function withRetry<T>(
     } catch (error: any) {
       lastError = error;
       const errorStr = typeof error === 'string' ? error : (error?.message || JSON.stringify(error));
-      const isRateLimit = errorStr.includes('429') || 
+      const isRetryable = errorStr.includes('429') || 
+                          errorStr.includes('503') ||
+                          errorStr.includes('500') ||
                           errorStr.toLowerCase().includes('quota') || 
                           errorStr.includes('RESOURCE_EXHAUSTED') ||
-                          error?.status === 429;
+                          errorStr.toLowerCase().includes('unavailable') ||
+                          error?.status === 429 ||
+                          error?.status === 503 ||
+                          error?.status === 500;
       
-      if (isRateLimit && attempt < maxRetries) {
+      if (isRetryable && attempt < maxRetries) {
         const waitTime = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
-        console.warn(`Rate limit hit (429). Retrying in ${Math.round(waitTime)}ms... (Attempt ${attempt}/${maxRetries})`);
+        console.warn(`Retryable error hit (${error?.status || 'AI Error'}). Retrying in ${Math.round(waitTime)}ms... (Attempt ${attempt}/${maxRetries})`);
         await delay(waitTime);
         continue;
       }

@@ -69,6 +69,27 @@ export interface StockFundamentals {
   eps: string;
   revenueGrowth: string;
   valuationPercentile: string;
+  netProfitGrowth?: string;
+  debtToEquity?: string;
+  grossMargin?: string;
+  netMargin?: string;
+  dividendYield?: string;
+}
+
+export interface FundamentalTableItem {
+  indicator: string;
+  value: string;
+  consensus: string;
+  deviation: string;
+  remark: string;
+}
+
+export interface IndustryAnchor {
+  variable: string;
+  currentValue: string;
+  weight: string;
+  monthlyChange: string;
+  logic: string;
 }
 
 export interface HistoricalData {
@@ -107,6 +128,8 @@ export interface StockAnalysis {
   summary: string;
   technicalAnalysis: string;
   fundamentalAnalysis: string;
+  fundamentalTable?: FundamentalTableItem[];
+  industryAnchors?: IndustryAnchor[];
   sentiment: "Bullish" | "Bearish" | "Neutral";
   score: number;
   recommendation: "Strong Buy" | "Buy" | "Hold" | "Sell" | "Strong Sell";

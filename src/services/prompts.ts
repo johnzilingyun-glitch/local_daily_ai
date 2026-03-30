@@ -255,8 +255,31 @@ JSON schema:
     "roe": "string",
     "eps": "string",
     "revenueGrowth": "string",
-    "valuationPercentile": "string"
+    "valuationPercentile": "string",
+    "netProfitGrowth": "string",
+    "debtToEquity": "string",
+    "grossMargin": "string",
+    "netMargin": "string",
+    "dividendYield": "string"
   },
+  "fundamentalTable": [
+    {
+      "indicator": "string",
+      "value": "string",
+      "consensus": "string",
+      "deviation": "string",
+      "remark": "string"
+    }
+  ],
+  "industryAnchors": [
+    {
+      "variable": "string",
+      "currentValue": "string",
+      "weight": "string",
+      "monthlyChange": "string",
+      "logic": "string"
+    }
+  ],
   "historicalData": {
     "yearHigh": "string",
     "yearLow": "string",
@@ -361,7 +384,10 @@ export const getDiscussionReportPrompt = (analysis: StockAnalysis, discussion: A
     
     报告应包含：
     1. 🚀 **股票基本信息**：名称、代码、当前价格、涨跌幅。
-    2. 📊 **核心财务指标**：PE, PB, ROE, EPS 等关键数据及当前估值水位。
+    2. 📊 **核心财务指标与基本面透视**：
+       - PE, PB, ROE, EPS 等关键数据及当前估值水位。
+       - **核心指标与预期偏差表** (2026E)。
+       - **行业核心变量与宏观锚点表**。
     3. 🧠 **AI 专家组研讨摘要**：
        - 技术面、基本面、情绪面、风险管理、反向策略各方的核心观点。
        - 研讨中的主要分歧或共识点。
