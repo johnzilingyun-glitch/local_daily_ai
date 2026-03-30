@@ -210,5 +210,15 @@ export async function startAgentDiscussion(
     return result.text;
   });
 
-  return parseJsonResponse<AgentDiscussion>(response);
+  const parsed = parseJsonResponse<AgentDiscussion>(response);
+  
+  // Add unique IDs to messages for stable React keys
+  if (parsed.messages) {
+    parsed.messages = parsed.messages.map((msg, idx) => ({
+      ...msg,
+      id: msg.id || `msg-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`
+    }));
+  }
+  
+  return parsed;
 }

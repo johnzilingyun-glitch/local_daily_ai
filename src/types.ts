@@ -53,6 +53,7 @@ export interface Recommendation {
 }
 
 export interface MarketOverview {
+  id?: string;
   indices: IndexInfo[];
   topNews: NewsItem[];
   sectorAnalysis: SectorAnalysis[];
@@ -97,6 +98,7 @@ export interface TradingPlanVersion {
 }
 
 export interface StockAnalysis {
+  id?: string;
   stockInfo: StockInfo;
   fundamentals?: StockFundamentals;
   historicalData?: HistoricalData;
@@ -163,10 +165,11 @@ export interface StockAnalysis {
     logic: string;
     volatilityRisk: string;
   };
-  chatHistory?: { role: "user" | "ai"; content: string }[];
+  chatHistory?: { id: string; role: "user" | "ai"; content: string }[];
 }
 
 export interface ChatMessage {
+  id: string;
   role: "user" | "ai";
   content: string;
 }

@@ -441,21 +441,40 @@ export default function App() {
 
     setChatMessage('');
     setChatError(null);
-    setChatHistory((prev) => [...prev, { role: 'user', content: userMsg }]);
+    const userMsgId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    setChatHistory((prev) => [...prev, { id: userMsgId, role: 'user', content: userMsg }]);
     setIsChatting(true);
 
     try {
       const reply = await sendChatMessage(userMsg, analysis, geminiConfig);
-      const newHistory = [...chatHistory, { role: 'user', content: userMsg }, { role: 'ai', content: reply || '抱歉，我暂时无法回答这个问题。' }];
-      setChatHistory(newHistory as any);
+      const aiMsgId = `ai-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const aiMsg = { id: aiMsgId, role: 'ai' as const, content: reply || '抱歉，我暂时无法回答这个问题。' };
+      
+      setChatHistory((prev) => {
+        // Ensure we don't duplicate the user message if it's already there
+        const hasUserMsg = prev.some(m => m.id === userMsgId);
+        const baseHistory = hasUserMsg ? prev : [...prev, { id: userMsgId, role: 'user' as const, content: userMsg }];
+        return [...baseHistory, aiMsg];
+      });
       
       // Update analysis with chat history and save
-      const updatedAnalysis: StockAnalysis = {
-        ...analysis,
-        chatHistory: newHistory as any
-      };
-      setAnalysis(updatedAnalysis);
-      await saveAnalysisToHistory('stock', updatedAnalysis);
+      setAnalysis((prev) => {
+        if (!prev) return null;
+        const newHistory = [
+          ...(prev.chatHistory || []),
+          { id: userMsgId, role: 'user', content: userMsg },
+          aiMsg
+        ];
+        const updatedAnalysis: StockAnalysis = {
+          ...prev,
+          chatHistory: newHistory as any
+        };
+        
+        // Save to history asynchronously
+        void saveAnalysisToHistory('stock', updatedAnalysis);
+        return updatedAnalysis;
+      });
+      
       void fetchAdminData(true);
     } catch (err) {
       console.error(err);
@@ -864,7 +883,7 @@ export default function App() {
                               </h4>
                               <div className="space-y-2">
                                 {controversialPoints.map((point, idx) => (
-                                  <div key={idx} className="flex items-start gap-2">
+                                  <div key={`controversial-${idx}-${point.substring(0, 20)}`} className="flex items-start gap-2">
                                     <div className="w-1 h-1 rounded-full bg-rose-500 mt-1.5 shrink-0" />
                                     <p className="text-[11px] text-zinc-400 leading-relaxed italic">{point}</p>
                                   </div>
@@ -912,7 +931,7 @@ export default function App() {
                                   </h5>
                                   <div className="space-y-3">
                                     {tradingPlanHistory.map((v, i) => (
-                                      <div key={i} className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800/50 text-[10px]">
+                                      <div key={`trading-plan-${v.version}-${v.timestamp}-${i}`} className="p-3 rounded-xl bg-zinc-950/50 border border-zinc-800/50 text-[10px]">
                                         <div className="flex items-center justify-between mb-1">
                                           <span className="font-black text-blue-400 uppercase tracking-widest">{v.version}</span>
                                           <span className="text-zinc-600 font-mono">{new Date(v.timestamp).toLocaleTimeString()}</span>
@@ -984,7 +1003,7 @@ export default function App() {
 
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {scenarios.map((s, i) => (
-                                  <div key={i} className={cn(
+                                  <div key={`scenario-${s.case}-${s.probability}-${i}`} className={cn(
                                     "p-6 rounded-[2rem] border transition-all hover:scale-[1.02] duration-300",
                                     s.case === "Bull" ? "bg-emerald-500/5 border-emerald-500/20" :
                                     s.case === "Stress" ? "bg-rose-500/5 border-rose-500/20" :
@@ -1033,7 +1052,7 @@ export default function App() {
                                   <h4 className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">因子敏感度面板 (Sensitivity Analysis)</h4>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {sensitivityFactors.map((f, i) => (
-                                      <div key={i} className="p-4 rounded-xl bg-zinc-950/50 border border-zinc-800/50 group hover:border-zinc-700 transition-all">
+                                      <div key={`sensitivity-${f.factor}-${i}`} className="p-4 rounded-xl bg-zinc-950/50 border border-zinc-800/50 group hover:border-zinc-700 transition-all">
                                         <div className="flex items-center justify-between mb-2">
                                           <span className="text-xs font-bold text-zinc-300">{f.factor}</span>
                                           <span className="text-[10px] font-mono text-zinc-500">{f.change}</span>
@@ -1070,7 +1089,7 @@ export default function App() {
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {calculations.map((calc, idx) => (
-                                      <div key={idx} className="p-4 rounded-xl bg-zinc-950/50 border border-amber-500/10 group hover:border-amber-500/20 transition-all">
+                                      <div key={`calc-${calc.formulaName}-${calc.timestamp}-${idx}`} className="p-4 rounded-xl bg-zinc-950/50 border border-amber-500/10 group hover:border-amber-500/20 transition-all">
                                         <div className="flex items-center justify-between mb-3">
                                           <span className="text-xs font-black text-amber-500 uppercase tracking-widest">{calc.formulaName}</span>
                                           <span className="text-[9px] font-mono text-zinc-600">{new Date(calc.timestamp).toLocaleTimeString()}</span>
@@ -1115,7 +1134,7 @@ export default function App() {
                                   </h4>
                                   <div className="space-y-2">
                                     {catalystList.map((c, i) => (
-                                      <div key={i} className="flex items-center justify-between text-[11px]">
+                                      <div key={`catalyst-${c.event.substring(0, 10)}-${i}`} className="flex items-center justify-between text-[11px]">
                                         <span className="text-zinc-400 font-medium">{c.event}</span>
                                         <div className="flex items-center gap-4">
                                           <span className="text-zinc-600">概率: {c.probability}%</span>
@@ -1135,7 +1154,7 @@ export default function App() {
                                   </h4>
                                   <div className="space-y-3">
                                     {verificationMetrics?.map((m, i) => (
-                                      <div key={i} className="space-y-1">
+                                      <div key={`verification-${m.indicator}-${i}`} className="space-y-1">
                                         <div className="flex items-center justify-between text-[11px]">
                                           <span className="text-zinc-200 font-bold">{m.indicator}</span>
                                           <span className="text-emerald-400 font-mono">{m.threshold}</span>
@@ -1190,7 +1209,7 @@ export default function App() {
                                       <span className="text-[8px] text-zinc-600 uppercase font-black">分层建仓 (Layered Entry)</span>
                                       <div className="flex flex-wrap gap-2">
                                         {positionManagement.layeredEntry?.map((step, i) => (
-                                          <span key={i} className="text-[9px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">{step}</span>
+                                          <span key={`entry-step-${i}-${step.substring(0, 10)}`} className="text-[9px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">{step}</span>
                                         ))}
                                       </div>
                                     </div>
@@ -1223,13 +1242,13 @@ export default function App() {
                                       <div className="space-y-1">
                                         <span className="text-[8px] text-zinc-600 uppercase font-black">关键里程碑 (Milestones)</span>
                                         <ul className="list-disc list-inside text-[9px] text-zinc-400 space-y-0.5">
-                                          {timeDimension.keyMilestones?.map((m, i) => <li key={i}>{m}</li>)}
+                                          {timeDimension.keyMilestones?.map((m, i) => <li key={`milestone-${i}-${m.substring(0, 10)}`}>{m}</li>)}
                                         </ul>
                                       </div>
                                       <div className="space-y-1">
                                         <span className="text-[8px] text-zinc-600 uppercase font-black">退出触发 (Exit Triggers)</span>
                                         <ul className="list-disc list-inside text-[9px] text-zinc-400 space-y-0.5">
-                                          {timeDimension.exitTriggers?.map((t, i) => <li key={i}>{t}</li>)}
+                                          {timeDimension.exitTriggers?.map((t, i) => <li key={`trigger-${i}-${t.substring(0, 10)}`}>{t}</li>)}
                                         </ul>
                                       </div>
                                     </div>
@@ -1240,7 +1259,7 @@ export default function App() {
                           )}
 
                           {discussionMessages.filter(m => m.role === "Moderator").map((m, i) => (
-                            <div key={m.id || `mod-${i}`} className="relative">
+                            <div key={m.id || `mod-${m.role}-${i}`} className="relative">
                               <div className="absolute -left-2 top-0 bottom-0 w-1 bg-emerald-500/50 rounded-full" />
                               <div className="prose prose-invert prose-sm max-w-none pl-4">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -1525,7 +1544,7 @@ export default function App() {
                       </div>
                       <ul className="space-y-2">
                         {analysis.historicalData?.majorEvents?.map((event, i) => (
-                          <li key={i} className="text-xs text-zinc-500 flex items-start gap-2">
+                          <li key={`event-${i}-${event.substring(0, 10)}`} className="text-xs text-zinc-500 flex items-start gap-2">
                             <span className="mt-1.5 w-1 h-1 rounded-full bg-zinc-700 shrink-0" />
                             {event}
                           </li>
@@ -1591,7 +1610,7 @@ export default function App() {
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {analysis.verificationMetrics?.map((m, i) => (
-                          <div key={i} className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/30">
+                          <div key={`analysis-verification-${m.indicator}-${i}`} className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/30">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-bold text-zinc-100">{m.indicator}</span>
                               <span className="text-base font-black text-emerald-400 font-mono">{m.threshold}</span>
@@ -1710,7 +1729,7 @@ export default function App() {
                     </h3>
                     <div className="space-y-4">
                       {analysis.news?.map((item, i) => (
-                        <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" className="block group">
+                        <a key={`news-${item.title.substring(0, 20)}-${i}`} href={item.url} target="_blank" rel="noopener noreferrer" className="block group">
                           <div className="mb-1 flex items-start justify-between gap-2">
                             <h4 className="line-clamp-1 text-sm font-medium transition-colors group-hover:text-emerald-400">{item.title}</h4>
                             <ExternalLink size={12} className="shrink-0 text-zinc-600 transition-colors group-hover:text-emerald-400" />
@@ -1762,7 +1781,7 @@ export default function App() {
                     </h3>
                     <ul className="space-y-3">
                       {analysis.keyOpportunities?.map((opp, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-zinc-400">
+                        <li key={`opp-${opp.substring(0, 20)}-${i}`} className="flex items-start gap-3 text-sm text-zinc-400">
                           <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-500" />
                           {opp}
                         </li>
@@ -1777,7 +1796,7 @@ export default function App() {
                     </h3>
                     <ul className="space-y-3">
                       {analysis.keyRisks?.map((risk, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-zinc-400">
+                        <li key={`risk-${risk.substring(0, 20)}-${i}`} className="flex items-start gap-3 text-sm text-zinc-400">
                           <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-500" />
                           {risk}
                         </li>
@@ -1830,8 +1849,8 @@ export default function App() {
                   <p className="mb-4 text-sm leading-relaxed text-zinc-500">继续追问买点、仓位、风险、估值或交易计划。</p>
 
                   <div className="mb-4 flex flex-wrap gap-2">
-                    {chatPrompts.map((p) => (
-                      <button key={p} type="button" onClick={() => void handleChat(p)} disabled={isChatting} className="rounded-full border border-zinc-700 bg-zinc-800/80 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">
+                    {chatPrompts.map((p, i) => (
+                      <button key={`prompt-${i}-${p}`} type="button" onClick={() => void handleChat(p)} disabled={isChatting} className="rounded-full border border-zinc-700 bg-zinc-800/80 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">
                         {p}
                       </button>
                     ))}
@@ -1839,7 +1858,7 @@ export default function App() {
 
                   <div className="mb-6 max-h-96 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                     {chatHistory?.map((msg, idx) => (
-                      <div key={`${msg.role}-${idx}-${msg.content.substring(0, 20)}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div key={msg.id || `chat-${msg.role}-${idx}-${msg.content.substring(0, 10)}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.role === 'user' ? 'rounded-tr-none bg-emerald-600 text-white' : 'rounded-tl-none bg-zinc-800 text-zinc-300'}`}>
                           {msg.content}
                         </div>
@@ -1999,9 +2018,9 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
                   {overviewLoading ? Array(5).fill(0).map((_, i) => (
-                    <div key={`skeleton-${i}`} className="h-24 animate-pulse rounded-2xl border border-zinc-800 bg-zinc-900/50" />
+                    <div key={`skeleton-index-${i}`} className="h-24 animate-pulse rounded-2xl border border-zinc-800 bg-zinc-900/50" />
                   )) : marketOverview?.indices?.map((index, i) => (
-                    <div key={index.symbol || index.name || i} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+                    <div key={index.symbol || `index-${i}-${index.name}`} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
                       <p className="mb-1 text-xs font-medium text-zinc-500">{index.name}</p>
                       <p className="text-lg font-bold tracking-tight">{index.price.toLocaleString()}</p>
                       <div className={cn('mt-1 flex items-center gap-1 font-mono text-xs', index.change >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
@@ -2034,7 +2053,7 @@ export default function App() {
                         </h3>
                         <div className="space-y-3">
                           {marketOverview.sectorAnalysis?.map((sector, i) => (
-                            <div key={sector.name || i} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
+                            <div key={`sector-${i}-${sector.name}`} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-bold text-zinc-200">{sector.name}</span>
                                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase", 
@@ -2054,7 +2073,7 @@ export default function App() {
                         </h3>
                         <div className="space-y-3">
                           {marketOverview.commodityAnalysis?.map((item, i) => (
-                            <div key={item.name || i} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
+                            <div key={`commodity-${i}-${item.name}`} className="rounded-xl bg-zinc-800/30 p-3 border border-zinc-700/30">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-bold text-zinc-200">{item.name}</span>
                                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase", 
@@ -2099,7 +2118,7 @@ export default function App() {
                     {overviewLoading ? Array(3).fill(0).map((_, i) => (
                       <div key={`news-skeleton-${i}`} className="h-32 animate-pulse rounded-3xl border border-zinc-800 bg-zinc-900/50" />
                     )) : marketOverview?.topNews?.map((news, i) => (
-                      <a key={news.url || news.title || i} href={news.url} target="_blank" rel="noopener noreferrer" className="group block rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6 transition-all hover:border-emerald-500/30">
+                      <a key={`news-${i}-${news.url || news.title}`} href={news.url} target="_blank" rel="noopener noreferrer" className="group block rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6 transition-all hover:border-emerald-500/30">
                         <div className="mb-2 flex items-start justify-between gap-4">
                           <h3 className="text-lg font-semibold transition-colors group-hover:text-emerald-400">{news.title}</h3>
                           <ExternalLink size={16} className="mt-1 shrink-0 text-zinc-600" />
@@ -2183,7 +2202,7 @@ export default function App() {
                 </h2>
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   {historyItems.map((item, i) => {
-                    const itemKey = item.id || (item.stockInfo?.symbol ? `stock-${item.stockInfo.symbol}-${item.stockInfo.lastUpdated}-${i}` : `market-${i}`);
+                    const itemKey = item.id ? `history-id-${item.id}` : (item.stockInfo?.symbol ? `stock-${item.stockInfo.symbol}-${item.stockInfo.lastUpdated}-${i}` : `market-${i}`);
                     return (
                       <div 
                         key={itemKey} 
@@ -2334,7 +2353,7 @@ export default function App() {
                           { label: 'AI 评级', value: selectedDetail.data.recommendation, color: 'text-amber-400' },
                           { label: '市场情绪', value: selectedDetail.data.sentiment, color: 'text-blue-400' },
                         ].map((stat, i) => (
-                          <div key={i} className="p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700/50">
+                          <div key={`stat-${stat.label}-${i}`} className="p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700/50">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">{stat.label}</p>
                             <p className={cn("text-lg font-bold", stat.color)}>{stat.value}</p>
                           </div>
@@ -2406,7 +2425,7 @@ export default function App() {
                           <h4 className="text-sm font-bold uppercase tracking-widest text-emerald-500/50">核心机会</h4>
                           <ul className="list-disc list-inside space-y-2 text-sm text-emerald-400/80">
                             {selectedDetail.data.keyOpportunities.map((opp: string, i: number) => (
-                              <li key={i}>{opp}</li>
+                              <li key={`opp-detail-${i}-${opp.substring(0, 10)}`}>{opp}</li>
                             ))}
                           </ul>
                         </div>
@@ -2416,7 +2435,7 @@ export default function App() {
                           <h4 className="text-sm font-bold uppercase tracking-widest text-rose-500/50">核心风险</h4>
                           <ul className="list-disc list-inside space-y-2 text-sm text-rose-400/80">
                             {selectedDetail.data.keyRisks.map((risk: string, i: number) => (
-                              <li key={i}>{risk}</li>
+                              <li key={`risk-detail-${i}-${risk.substring(0, 10)}`}>{risk}</li>
                             ))}
                           </ul>
                         </div>

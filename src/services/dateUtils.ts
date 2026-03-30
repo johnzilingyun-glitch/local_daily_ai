@@ -15,8 +15,8 @@ export function getBeijingDate(date: Date): string {
  * Generates a unique key for history items to avoid React duplicate key warnings.
  */
 export function generateHistoryItemKey(item: any, index: number): string {
-  if (item.id) return item.id;
+  const id = item.id || `no-id-${index}`;
   const symbol = item.stockInfo?.symbol || 'unknown';
   const time = item.stockInfo?.lastUpdated || 'no-time';
-  return `history-${symbol}-${time}-${index}`;
+  return `history-${id}-${symbol}-${time}-${index}`;
 }

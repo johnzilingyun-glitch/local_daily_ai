@@ -210,7 +210,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {dataVerification.map((item, idx) => (
-                <div key={idx} className="bg-slate-900/50 border border-white/5 rounded-xl p-4 space-y-2">
+                <div key={`verification-${idx}-${item.source}`} className="bg-slate-900/50 border border-white/5 rounded-xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-300">{item.source}</span>
                     {item.isVerified ? (
@@ -251,10 +251,12 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
         )}
 
         <AnimatePresence initial={false}>
-          {messages.map((msg, i) => (
-            <motion.div
-              key={msg.id || `msg-${i}-${msg.role}-${msg.timestamp}`}
-              initial={{ opacity: 0, x: -20 }}
+          {messages.map((msg, i) => {
+            const msgKey = msg.id ? `msg-id-${msg.id}` : `msg-idx-${i}-${msg.role}-${msg.timestamp}-${Math.random().toString(36).substr(2, 5)}`;
+            return (
+              <motion.div
+                key={msgKey}
+                initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ type: "spring", stiffness: 100, damping: 15 }}
               className="flex gap-6 group max-w-4xl mx-auto"
@@ -326,7 +328,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
                         <div className="flex flex-wrap gap-2">
                           {msg.references.map((ref, idx) => (
                             <a
-                              key={idx}
+                              key={`ref-${idx}-${ref.url}`}
                               href={ref.url}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -345,7 +347,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
                 </div>
               </div>
             </motion.div>
-          ))}
+          )})}
         </AnimatePresence>
         
         {messages.length === 0 && !isDiscussing && (

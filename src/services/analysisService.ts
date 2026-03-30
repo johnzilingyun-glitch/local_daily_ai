@@ -44,6 +44,7 @@ export async function analyzeStock(symbol: string, market: Market, config?: Gemi
   });
 
   const analysis = parseJsonResponse<StockAnalysis>(response);
+  analysis.id = `stock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   return analysis;
 }

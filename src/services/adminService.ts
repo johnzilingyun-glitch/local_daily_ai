@@ -1,7 +1,13 @@
 export async function getHistoryContext(): Promise<any[]> {
   try {
-    const response = await fetch('/api/history/context');
+    // Add cache-buster to avoid getting cached HTML fallback pages
+    const response = await fetch(`/api/history/context?t=${Date.now()}`);
     if (response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        console.error('Received HTML instead of JSON for history context. This might be a redirect or fallback.');
+        return [];
+      }
       const text = await response.text();
       try {
         return JSON.parse(text);

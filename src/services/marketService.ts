@@ -39,6 +39,7 @@ export async function getMarketOverview(config?: GeminiConfig, market: Market = 
   });
 
   const overview = parseJsonResponse<MarketOverview>(response);
+  overview.id = `market-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   if (overview.indices && overview.indices.length > 0) {
     await saveAnalysisToHistory('market', overview);

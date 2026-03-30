@@ -61,10 +61,12 @@ async function startServer() {
 
   function saveAnalysis(type: 'market' | 'stock', data: any) {
     try {
-      const filename = `${type}_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      const id = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const dataWithId = { ...data, id };
+      const filename = `${type}_${new Date().toISOString().replace(/[:.]/g, '-')}_${Math.random().toString(36).substr(2, 5)}.json`;
       const filePath = path.join(HISTORY_DIR, filename);
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-      console.log(`Analysis saved to ${filePath}`);
+      fs.writeFileSync(filePath, JSON.stringify(dataWithId, null, 2));
+      console.log(`Analysis saved to ${filePath} with ID ${id}`);
     } catch (err) {
       console.error('Failed to save analysis:', err);
       throw err;
@@ -284,7 +286,7 @@ async function startServer() {
             });
           }
         } catch (e) {
-          console.warn(`Failed to fetch index ${idx.symbol}:`, e);
+          console.warn(`Failed to fetch index ${idx.symbol}:`, e instanceof Error ? e.message : String(e));
         }
       }
 
@@ -292,7 +294,7 @@ async function startServer() {
       res.json(results);
     } catch (error) {
       console.error('Indices fetch error:', error);
-      res.status(500).json({ error: 'Failed to fetch indices data' });
+      res.status(500).json({ error: 'Failed to fetch indices data', details: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -322,26 +324,14 @@ async function startServer() {
             });
           }
         } catch (e) {
-          console.warn(`Failed to fetch commodity ${item.symbol}:`, e);
+          console.warn(`Failed to fetch commodity ${item.symbol}:`, e instanceof Error ? e.message : String(e));
         }
       }
-
-      // Special handling for Lithium Carbonate (often no direct ticker on Yahoo)
-      // We'll try a search or just provide a placeholder that the AI should verify, 
-      // but the user wants "accurate foundational data".
-      // Let's try to find a proxy or just leave it to the AI if we can't get it via API.
-      // Actually, I'll add a search for "Lithium Carbonate" to see if we can get a price snippet.
-      try {
-        const search = await yahooFinance.search('Lithium Carbonate price');
-        if (search.quotes && search.quotes.length > 0) {
-          // This might not be very accurate for "Battery-grade" spot price.
-        }
-      } catch (e) {}
 
       res.json(results);
     } catch (error) {
       console.error('Commodities fetch error:', error);
-      res.status(500).json({ error: 'Failed to fetch commodities data' });
+      res.status(500).json({ error: 'Failed to fetch commodities data', details: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -371,7 +361,26 @@ async function startServer() {
         });
 
         console.log(`Fetching batch quotes for: ${symbolList.join(', ')}`);
-        const results = await yahooFinance.quote(symbolList as any) as any[];
+        let results: any[];
+        try {
+          results = await yahooFinance.quote(symbolList as any) as any[];
+        } catch (quoteErr) {
+          console.error(`Yahoo Batch Quote failed for [${symbolList.join(', ')}]:`, quoteErr);
+          // If batch fails, try individual quotes to salvage what we can
+          results = [];
+          for (const sym of symbolList) {
+            try {
+              const q = await yahooFinance.quote(sym as any);
+              if (q) results.push(q);
+            } catch (e) {
+              console.warn(`Individual quote failed for ${sym} in batch:`, e instanceof Error ? e.message : String(e));
+            }
+          }
+        }
+        
+        if (!results || results.length === 0) {
+          return res.status(404).json({ error: 'No valid data found for the provided symbols' });
+        }
         
         // Format results to be consistent with single quote response
         const formattedResults = results.map(result => {
@@ -443,30 +452,103 @@ async function startServer() {
       
       // If the symbol already contains a dot or starts with a caret, assume it's already a valid Yahoo symbol
       if (!yfSymbol.includes('.') && !yfSymbol.startsWith('^')) {
-        if (market === 'A-Share') {
-          // Use East Money Suggest API to smartly resolve Chinese names and pinyins (e.g. MRYL, 迈瑞医疗) into 6-digit codes
-          if (!/^\d{6}$/.test(yfSymbol)) {
-            try {
-              const encodedInput = encodeURIComponent((symbol as string).trim());
-              const emUrl = `https://searchapi.eastmoney.com/api/suggest/get?cb=cb&input=${encodedInput}&type=14&token=D43BF722C8E33BDC906FB84D85E326E8`;
-              const response = await fetch(emUrl);
-              const text = await response.text();
-              const match = text.match(/^cb\((.*)\)$/);
-              if (match && match[1]) {
-                const data = JSON.parse(match[1]);
-                if (data?.QuotationCodeTable?.Data?.length > 0) {
-                  const bestCode = data.QuotationCodeTable.Data[0].Code;
-                  if (bestCode && /^\d{6}$/.test(bestCode)) {
-                    console.log(`Smart Resolved '${yfSymbol}' to '${bestCode}' via EastMoney`);
+        const isStandardA = market === 'A-Share' && /^\d{6}$/.test(yfSymbol);
+        const isStandardHK = market === 'HK-Share' && /^\d{1,5}$/.test(yfSymbol);
+        const isStandardUS = market === 'US-Share' && /^[A-Z]{1,5}$/.test(yfSymbol);
+
+        // If not a standard code for the market, try East Money Suggest API
+        if (!isStandardA && !isStandardHK && !isStandardUS) {
+          try {
+            const encodedInput = encodeURIComponent((symbol as string).trim());
+            // Try a more reliable EastMoney Suggest API first
+            const emUrl = `https://suggest.eastmoney.com/suggest/default.aspx?name=cb&input=${encodedInput}`;
+            const response = await fetch(emUrl);
+            const text = await response.text();
+            const match = text.match(/^var cb = (\[.*\]);?$/);
+            if (match && match[1]) {
+              const data = JSON.parse(match[1]);
+              if (Array.isArray(data) && data.length > 0) {
+                // Find the best match for the requested market
+                for (const item of data) {
+                  const parts = item.split(',');
+                  if (parts.length >= 4) {
+                    const code = parts[1];
+                    const fullCode = parts[3];
+                    const emMarketType = parts[2];
+                    const emMarketName = parts[6]; // e.g., "HK", "US", "SH", "SZ"
+
+                    let isMatch = false;
+                    if (market === 'A-Share' && (emMarketName === 'SH' || emMarketName === 'SZ' || emMarketName === 'BJ')) isMatch = true;
+                    if (market === 'HK-Share' && emMarketName === 'HK') isMatch = true;
+                    if (market === 'US-Share' && emMarketName === 'US') isMatch = true;
+
+                    if (isMatch) {
+                      console.log(`Smart Resolved '${yfSymbol}' to '${code}' via New EastMoney (Market: ${market})`);
+                      yfSymbol = code;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            
+            // If the new EastMoney API failed, try the old one as fallback
+            if (yfSymbol === (symbol as string).trim().toUpperCase()) {
+              // type=14 (A-Share), type=31 (HK-Share), type=32 (US-Share)
+              let emType = '14';
+              if (market === 'HK-Share') emType = '31';
+              if (market === 'US-Share') emType = '32';
+              
+              const oldEmUrl = `https://searchapi.eastmoney.com/api/suggest/get?cb=cb&input=${encodedInput}&type=${emType}&token=D43BF722C8E33BDC906FB84D85E326E8`;
+              const oldResponse = await fetch(oldEmUrl);
+              const oldText = await oldResponse.text();
+              const oldMatch = oldText.match(/^cb\((.*)\)$/);
+              if (oldMatch && oldMatch[1]) {
+                const oldData = JSON.parse(oldMatch[1]);
+                if (oldData?.QuotationCodeTable?.Data?.length > 0) {
+                  const bestMatch = oldData.QuotationCodeTable.Data[0];
+                  const bestCode = bestMatch.Code;
+                  if (bestCode) {
+                    console.log(`Smart Resolved '${yfSymbol}' to '${bestCode}' via Old EastMoney (Market: ${market})`);
                     yfSymbol = bestCode;
                   }
                 }
               }
-            } catch (error) {
-              console.error(`EastMoney resolution failed for ${yfSymbol}:`, error);
             }
+            
+            // If still failed, try Sina Suggest API as fallback
+            if (yfSymbol === (symbol as string).trim().toUpperCase()) {
+              console.log(`EastMoney resolution failed for ${yfSymbol}, trying Sina...`);
+              const sinaUrl = `https://suggest3.sinajs.cn/suggest/type=&key=${encodedInput}`;
+              const sinaRes = await fetch(sinaUrl);
+              const sinaText = await sinaRes.text();
+              // Format: var suggestdata_1711790000000="腾讯控股,31,00700,00700,腾讯控股,TXKG";
+              const sinaMatch = sinaText.match(/="([^"]+)"/);
+              if (sinaMatch && sinaMatch[1]) {
+                const parts = sinaMatch[1].split(';');
+                for (const part of parts) {
+                  const details = part.split(',');
+                  if (details.length >= 3) {
+                    const sinaCode = details[2];
+                    const sinaMarket = details[1];
+                    // 11=A-Share (SH), 12=A-Share (SZ), 31=HK, 41=US
+                    if ((market === 'A-Share' && (sinaMarket === '11' || sinaMarket === '12')) ||
+                        (market === 'HK-Share' && sinaMarket === '31') ||
+                        (market === 'US-Share' && sinaMarket === '41')) {
+                      console.log(`Smart Resolved '${yfSymbol}' to '${sinaCode}' via Sina (Market: ${market})`);
+                      yfSymbol = sinaCode;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Symbol resolution failed for ${yfSymbol} (${market}):`, error);
           }
+        }
 
+        if (market === 'A-Share') {
           // Only append suffix if it's a 6-digit number
           if (/^\d{6}$/.test(yfSymbol)) {
             if (yfSymbol.startsWith('60') || yfSymbol.startsWith('68')) {
@@ -502,6 +584,9 @@ async function startServer() {
           } else if (market === 'HK-Share' && !symMatch.endsWith('.HK')) {
             console.log(`Quote found ${symMatch} but it is not a HK-Share. Discarding.`);
             result = null;
+          } else if (market === 'US-Share' && (symMatch.endsWith('.SS') || symMatch.endsWith('.SZ') || symMatch.endsWith('.BJ') || symMatch.endsWith('.HK'))) {
+            console.log(`Quote found ${symMatch} but it is not a US-Share. Discarding.`);
+            result = null;
           }
         }
       } catch (e) {
@@ -510,31 +595,64 @@ async function startServer() {
       
       if (!result) {
         // Try searching if quote fails (might be a name or abbreviation)
-        let searchResults = await yahooFinance.search(symbol as string);
-        
-        // Fallback search with "stock" keyword if first search yields no results
-        if ((!searchResults.quotes || searchResults.quotes.length === 0) && typeof symbol === 'string') {
-          console.log(`Search for ${symbol} yielded no results, trying with 'stock' keyword...`);
-          searchResults = await yahooFinance.search(`${symbol} stock`);
+        // If we have a resolved symbol that looks like a code, try searching for that first
+        const searchQueries = [];
+        if (yfSymbol !== symbol) {
+          searchQueries.push(yfSymbol);
         }
+        searchQueries.push((symbol as string).trim());
 
-        if (searchResults.quotes && searchResults.quotes.length > 0) {
-          // Find the best match for the requested market strictly
-          const bestMatch = searchResults.quotes.find((q: any) => {
-            const symMatch = (q.symbol || '').toUpperCase();
-            if (market === 'A-Share') return symMatch.endsWith('.SS') || symMatch.endsWith('.SZ') || symMatch.endsWith('.BJ');
-            if (market === 'HK-Share') return symMatch.endsWith('.HK');
-            // If US or other, we don't strictly filter
-            if (market === 'US-Share') return !symMatch.endsWith('.SS') && !symMatch.endsWith('.SZ') && !symMatch.endsWith('.HK');
-            return true;
-          });
+        for (const searchQuery of searchQueries) {
+          if (!searchQuery) continue;
           
-          if (bestMatch) {
-            console.log(`Search found best match: ${bestMatch.symbol} for ${symbol}`);
-            result = await yahooFinance.quote(bestMatch.symbol as any);
-          } else {
-            console.log(`Search yielded quotes but none matched the requested market (${market}).`);
-            result = null;
+          console.log(`Attempting Yahoo Search for: "${searchQuery}"`);
+          let searchResults: any;
+          try {
+            searchResults = await yahooFinance.search(searchQuery);
+          } catch (searchErr: any) {
+            console.error(`Yahoo Search failed for "${searchQuery}":`, searchErr);
+            
+            // If search fails with BadRequestError (common for Chinese queries), try a cleaner query
+            const isBadRequest = searchErr.name === 'BadRequestError' || searchErr.message?.includes('Invalid Search Query');
+            
+            if (isBadRequest) {
+              // Preserve Chinese characters but remove special symbols
+              const cleanQuery = searchQuery.replace(/[^\w\s\u4e00-\u9fa5]/g, ' ').trim();
+              if (cleanQuery && cleanQuery !== searchQuery) {
+                console.log(`Retrying Yahoo Search with cleaned query: "${cleanQuery}"`);
+                try {
+                  searchResults = await yahooFinance.search(cleanQuery);
+                } catch (retryErr) {
+                  console.error(`Yahoo Search retry failed for "${cleanQuery}":`, retryErr);
+                  continue;
+                }
+              } else {
+                continue;
+              }
+            } else {
+              continue;
+            }
+          }
+          
+          if (searchResults.quotes && searchResults.quotes.length > 0) {
+            // Find the best match for the requested market strictly
+            const bestMatch = searchResults.quotes.find((q: any) => {
+              const symMatch = (q.symbol || '').toUpperCase();
+              if (market === 'A-Share') return symMatch.endsWith('.SS') || symMatch.endsWith('.SZ') || symMatch.endsWith('.BJ');
+              if (market === 'HK-Share') return symMatch.endsWith('.HK');
+              if (market === 'US-Share') return !symMatch.endsWith('.SS') && !symMatch.endsWith('.SZ') && !symMatch.endsWith('.BJ') && !symMatch.endsWith('.HK');
+              return true;
+            });
+            
+            if (bestMatch) {
+              console.log(`Search found best match: ${bestMatch.symbol} for ${searchQuery}`);
+              try {
+                result = await yahooFinance.quote(bestMatch.symbol as any);
+                if (result) break; // Found it!
+              } catch (quoteErr) {
+                console.error(`Quote failed for search match ${bestMatch.symbol}:`, quoteErr);
+              }
+            }
           }
         }
       }
@@ -598,7 +716,7 @@ async function startServer() {
       });
     } catch (error) {
       console.error('Yahoo Finance Error:', error);
-      res.status(500).json({ error: 'Failed to fetch real-time stock data' });
+      res.status(500).json({ error: 'Failed to fetch real-time stock data', details: error instanceof Error ? error.message : String(error) });
     }
   });
 

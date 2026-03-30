@@ -6,7 +6,7 @@ interface AnalysisState {
   market: Market;
   analysis: StockAnalysis | null;
   chatMessage: string;
-  chatHistory: { role: 'user' | 'ai'; content: string }[];
+  chatHistory: { id: string; role: 'user' | 'ai'; content: string }[];
   discussionMessages: AgentMessage[];
   scenarios: Scenario[];
   valuationMatrix: Scenario[];
@@ -27,9 +27,9 @@ interface AnalysisState {
 
   setSymbol: (symbol: string) => void;
   setMarket: (market: Market) => void;
-  setAnalysis: (analysis: StockAnalysis | null) => void;
+  setAnalysis: (analysis: StockAnalysis | null | ((prev: StockAnalysis | null) => StockAnalysis | null)) => void;
   setChatMessage: (message: string) => void;
-  setChatHistory: (history: { role: 'user' | 'ai'; content: string }[] | ((prev: { role: 'user' | 'ai'; content: string }[]) => { role: 'user' | 'ai'; content: string }[])) => void;
+  setChatHistory: (history: { id: string; role: 'user' | 'ai'; content: string }[] | ((prev: { id: string; role: 'user' | 'ai'; content: string }[]) => { id: string; role: 'user' | 'ai'; content: string }[])) => void;
   setDiscussionMessages: (messages: AgentMessage[] | ((prev: AgentMessage[]) => AgentMessage[])) => void;
   setScenarios: (scenarios: Scenario[]) => void;
   setValuationMatrix: (matrix: Scenario[]) => void;
@@ -77,7 +77,7 @@ export const useAnalysisStore = create<AnalysisState>((set) => ({
 
   setSymbol: (symbol) => set({ symbol }),
   setMarket: (market) => set({ market }),
-  setAnalysis: (analysis) => set({ analysis }),
+  setAnalysis: (updater) => set((state) => ({ analysis: typeof updater === 'function' ? updater(state.analysis) : updater })),
   setChatMessage: (chatMessage) => set({ chatMessage }),
   setChatHistory: (updater) => set((state) => ({ chatHistory: typeof updater === 'function' ? updater(state.chatHistory) : updater })),
   setDiscussionMessages: (updater) => set((state) => ({ discussionMessages: typeof updater === 'function' ? updater(state.discussionMessages) : updater })),
