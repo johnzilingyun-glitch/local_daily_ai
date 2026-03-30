@@ -19,8 +19,9 @@ If the current time in China is past 15:00 CST, you MUST prioritize fetching the
 Previous analysis context (for reference and continuity):
 ${JSON.stringify(history.slice(0, 3))}
 
-Return JSON only, with no markdown fences and no explanation outside the JSON object.
+Return valid, complete JSON only, with no markdown fences, no explanation, and no extra text outside the JSON object. Ensure the JSON is complete and not truncated.
 **IMPORTANT**: The JSON MUST have "indices" at the root level. Do NOT wrap the entire response in another object like "marketOverview" or "data".
+**CRITICAL**: Ensure the JSON is valid and complete. Do not truncate the JSON response.
 
 Requirements:
 1. **STRICT JSON STRUCTURE (CRITICAL)**: The root object MUST contain the "indices" array.

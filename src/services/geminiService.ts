@@ -112,6 +112,7 @@ export function parseJsonResponse<T>(raw: string): T {
     }
     return parsed as T;
   } catch (error) {
+    console.error("Failed to parse Gemini JSON response. Raw response:", raw);
     throw new Error(
       error instanceof Error
         ? `Failed to parse Gemini JSON response: ${error.message}`
