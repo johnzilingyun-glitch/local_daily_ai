@@ -3,7 +3,7 @@ export async function getHistoryContext(): Promise<any[]> {
     // Add cache-buster to avoid getting cached HTML fallback pages
     const response = await fetch(`/api/history/context?t=${Date.now()}`);
     if (response.ok) {
-      const contentType = response.headers.get('content-type');
+      const contentType = response.headers?.get('content-type');
       if (contentType && contentType.includes('text/html')) {
         console.error('Received HTML instead of JSON for history context. This might be a redirect or fallback.');
         return [];
@@ -21,12 +21,31 @@ export async function getHistoryContext(): Promise<any[]> {
     }
   } catch (err) {
     console.error('Failed to fetch history context:', err);
-    if (err instanceof Error) {
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
-    }
   }
   return [];
+}
+
+export async function getPreviousStockAnalysis(symbol: string): Promise<any | null> {
+  try {
+    const history = await getHistoryContext();
+    // history is expected to be an array of analytical records { type: 'stock', data: { ... } }
+    const previous = history
+      .filter((item: any) => 
+        item.type === 'stock' && 
+        item.data?.stockInfo?.symbol === symbol
+      )
+      .sort((a: any, b: any) => {
+        const timeA = new Date(a.data?.stockInfo?.lastUpdated || 0).getTime();
+        const timeB = new Date(b.data?.stockInfo?.lastUpdated || 0).getTime();
+        return timeB - timeA;
+      });
+
+    // Return the most recent one (since save hasn't happened yet for current run)
+    return previous.length > 0 ? previous[0].data : null;
+  } catch (err) {
+    console.error('Failed to get previous stock analysis:', err);
+    return null;
+  }
 }
 
 export async function saveAnalysisToHistory(type: 'market' | 'stock', data: any) {

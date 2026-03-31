@@ -60,6 +60,76 @@ describe('Data Integrity and Verification Tests', () => {
     expect(parsed.dataVerification![1].discrepancy).toBe("价格偏差 0.5%");
   });
 
+  it('should correctly parse the new 5-layer decision engine fields', () => {
+    const mockResponse = JSON.stringify({
+      messages: [],
+      finalConclusion: "买入",
+      coreVariables: [
+        {
+          name: "锂矿价格",
+          value: 150000,
+          unit: "元/吨",
+          marketExpect: 160000,
+          delta: "-6.25% (利好成本)",
+          reason: "供给释放超预期",
+          evidenceLevel: "第三方监控"
+        }
+      ],
+      businessModel: {
+        businessType: "manufacturing",
+        formula: "利润 = 产量 × (售价 - 成本)",
+        drivers: {
+          volume: "40GWh",
+          price: "0.6元/Wh"
+        },
+        projectedProfit: "120亿",
+        confidenceScore: 85
+      },
+      quantifiedRisks: [
+        {
+          name: "关税风险",
+          probability: 30,
+          impactPercent: -20,
+          expectedLoss: -6,
+          mitigation: "增加本土化生产"
+        }
+      ],
+      riskAdjustedValuation: 145,
+      tradingPlan: {
+        entryPrice: "140",
+        targetPrice: "180",
+        stopLoss: "135",
+        strategy: "分批入场",
+        strategyRisks: "波动大",
+        positionPlan: [
+          { price: "140", positionPercent: 30 },
+          { price: "135", positionPercent: 40 }
+        ],
+        logicBasedStopLoss: "跌破年线支撑且锂矿反弹",
+        riskRewardRatio: 3.5
+      }
+    });
+
+    const parsed = parseJsonResponse<AgentDiscussion>(mockResponse);
+
+    expect(parsed.coreVariables).toHaveLength(1);
+    expect(parsed.coreVariables![0].name).toBe("锂矿价格");
+    expect(parsed.coreVariables![0].evidenceLevel).toBe("第三方监控");
+
+    expect(parsed.businessModel).toBeDefined();
+    expect(parsed.businessModel?.businessType).toBe("manufacturing");
+    expect(parsed.businessModel?.confidenceScore).toBe(85);
+
+    expect(parsed.quantifiedRisks).toHaveLength(1);
+    expect(parsed.quantifiedRisks![0].expectedLoss).toBe(-6);
+
+    expect(parsed.riskAdjustedValuation).toBe(145);
+
+    expect(parsed.tradingPlan?.positionPlan).toHaveLength(2);
+    expect(parsed.tradingPlan?.positionPlan![0].positionPercent).toBe(30);
+    expect(parsed.tradingPlan?.logicBasedStopLoss).toBe("跌破年线支撑且锂矿反弹");
+  });
+
   it('should correctly parse StockAnalysis with dataVerification', () => {
     const mockResponse = JSON.stringify({
       stockInfo: {

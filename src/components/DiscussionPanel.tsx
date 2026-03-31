@@ -1,11 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { AgentRole, DataVerification } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X, Maximize2, Minimize2, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X, Maximize2, Minimize2, CheckCircle2, ShieldCheck, Cpu, Layers, Target, History, RotateCcw, Database } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 import { useAnalysisStore } from '../stores/useAnalysisStore';
 import { useUIStore } from '../stores/useUIStore';
+import { getQualityLabel } from '../services/dataQualityService';
 
 interface DiscussionPanelProps {
   onSendMessage?: (message: string) => void;
@@ -51,22 +58,22 @@ const roleNames: Record<AgentRole, string> = {
   "Moderator": "研讨主持人",
 };
 
-export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({ 
+export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
   onSendMessage,
   onClose,
   isFullscreen,
   onToggleFullscreen,
   onPointerDownDrag
 }) => {
-  const { 
-    discussionMessages: messages, 
+  const {
+    discussionMessages: messages,
     analystWeights,
     analysis
   } = useAnalysisStore();
-  
-  const { 
-    isDiscussing, 
-    isReviewing 
+
+  const {
+    isDiscussing,
+    isReviewing
   } = useUIStore();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -125,7 +132,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
     <div className="flex flex-col h-full bg-slate-900 overflow-hidden">
       <div className="p-6 border-b border-slate-700/70 bg-slate-800 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-          <div 
+          <div
             className="relative cursor-grab active:cursor-grabbing p-2 -ml-2 hover:bg-slate-700/50 rounded-lg transition-colors"
             onPointerDown={onPointerDownDrag}
           >
@@ -134,11 +141,10 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
           </div>
           <h3 className="text-base font-black uppercase tracking-[0.2em] text-slate-200">AI 专家组联席会议</h3>
           {dataVerification && dataVerification.length > 0 && (
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-              dataVerification.every(v => v.isVerified) 
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${dataVerification.every(v => v.isVerified)
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                 : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-            }`}>
+              }`}>
               {dataVerification.every(v => v.isVerified) ? (
                 <>
                   <ShieldCheck size={12} />
@@ -164,7 +170,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
             </button>
           )}
           {messages.length > 0 && !isDiscussing && (
-            <button 
+            <button
               onClick={handleDownload}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 border border-slate-600 text-xs font-bold text-white transition-colors"
               title="下载研讨记录"
@@ -190,10 +196,174 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
         </div>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide bg-slate-900/80"
+        className="flex-1 overflow-y-auto p-4 md:p-8 space-y-10 scrollbar-hide bg-slate-900/80"
       >
+        {/* Performance Review (Backtest) */}
+        {analysis?.backtestResult && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-4xl mx-auto bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <RotateCcw size={120} className="text-indigo-400 rotate-12" />
+            </div>
+            
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                    <History size={20} className="text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-widest text-indigo-400">历史预测复盘 (Learning Loop)</h4>
+                    <p className="text-[10px] text-slate-500">上次分析时间: {new Date(analysis.backtestResult.previousDate).toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`text-xs font-black px-3 py-1 rounded-full border ${
+                    analysis.backtestResult.actualReturn.startsWith('+') 
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                      : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                  }`}>
+                    区间表现: {analysis.backtestResult.actualReturn}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-950/50 rounded-xl p-3 border border-white/5">
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">上次建议</p>
+                  <p className="text-sm font-black text-white">{analysis.backtestResult.previousRecommendation}</p>
+                </div>
+                <div className="bg-slate-950/50 rounded-xl p-3 border border-white/5 col-span-2">
+                  <p className="text-[10px] text-indigo-400 uppercase font-bold mb-1">专家组进化心得</p>
+                  <p className="text-xs text-indigo-200/90 leading-relaxed italic">"{analysis.backtestResult.learningPoint}"</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Decision Engine Dashboard */}
+        {analysis && (analysis.coreVariables || analysis.businessModel || analysis.quantifiedRisks) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-4xl mx-auto space-y-6 mb-8"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                <Target size={18} className="text-emerald-400" />
+              </div>
+              <h4 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-400">决策引擎量化看板</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Core Variables */}
+              {analysis.coreVariables && analysis.coreVariables.length > 0 && (
+                <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-cyan-500/20 transition-all">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Cpu size={16} className="text-cyan-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-cyan-400">核心经济变量 (SSoT)</span>
+                  </div>
+                  <div className="space-y-2">
+                    {analysis.coreVariables.map((v, idx) => (
+                      <div key={`cv-${idx}`} className="bg-slate-900/50 rounded-xl p-3 border border-white/5 text-xs">
+                        <div className="flex justify-between mb-1.5">
+                          <span className="font-bold text-slate-200">{v.name}</span>
+                          <span className="text-slate-500 font-mono text-[10px]">[{v.unit}] {v.evidenceLevel}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div><p className="text-[10px] text-slate-500">当前</p><p className="font-mono text-slate-300">{String(v.value)}</p></div>
+                          <div className="border-x border-white/5"><p className="text-[10px] text-slate-500">市场预期</p><p className="font-mono text-slate-300">{String(v.marketExpect)}</p></div>
+                          <div><p className="text-[10px] text-emerald-500">偏离</p><p className="font-mono text-emerald-400 font-bold">{v.delta}</p></div>
+                        </div>
+                        {v.reason && <p className="mt-1.5 pt-1.5 border-t border-white/5 text-[10px] text-amber-400/80 italic">{v.reason}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Business Model */}
+              {analysis.businessModel && (
+                <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-emerald-500/20 transition-all">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Layers size={16} className="text-emerald-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400">单位经济模型</span>
+                    <span className="ml-auto text-[10px] font-mono text-slate-600 uppercase">{analysis.businessModel.businessType}</span>
+                  </div>
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+                    <p className="text-[10px] text-emerald-500 font-black uppercase mb-1">利润推演公式</p>
+                    <p className="text-sm font-mono text-emerald-100 font-bold break-all">{analysis.businessModel.formula}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><p className="text-[10px] text-slate-500">预测利润</p><p className="text-base font-black text-white">{analysis.businessModel.projectedProfit}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-slate-500">置信度</p><p className="text-base font-black text-emerald-400">{analysis.businessModel.confidenceScore}%</p></div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(analysis.businessModel.drivers).map(([k, v]) => (
+                      <span key={`drv-${k}`} className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-700/50 border border-slate-600 text-slate-400">{k}: {v}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quantified Risks */}
+              {analysis.quantifiedRisks && analysis.quantifiedRisks.length > 0 && (
+                <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-rose-500/20 transition-all">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Shield size={16} className="text-rose-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-rose-400">风险概率矩阵 (EV)</span>
+                    {analysis.riskAdjustedValuation && (
+                      <span className="ml-auto text-[10px] font-mono font-bold text-amber-400">风险调整估值: {analysis.riskAdjustedValuation}</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {analysis.quantifiedRisks.map((r, idx) => (
+                      <div key={`qr-${idx}`} className="grid grid-cols-12 gap-2 items-center bg-slate-950/40 p-2.5 rounded-xl border border-white/5 text-xs">
+                        <div className="col-span-4"><p className="font-bold text-slate-200 truncate">{r.name}</p><p className="text-[10px] text-slate-500 truncate">{r.mitigation}</p></div>
+                        <div className="col-span-2 text-center"><p className="text-[9px] text-slate-500">概率</p><p className="font-mono font-bold text-amber-500">{r.probability}%</p></div>
+                        <div className="col-span-3 text-center"><p className="text-[9px] text-slate-500">利润冲击</p><p className="font-mono font-bold text-rose-400">{r.impactPercent}%</p></div>
+                        <div className="col-span-3 text-right"><p className="text-[9px] text-slate-500">EV损失</p><p className="font-mono font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-lg">{r.expectedLoss}%</p></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Position Plan (from tradingPlan) */}
+              {analysis.tradingPlan?.positionPlan && analysis.tradingPlan.positionPlan.length > 0 && (
+                <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-blue-500/20 transition-all">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Award size={16} className="text-blue-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-blue-400">分层建仓 & 逻辑止损</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {analysis.tradingPlan.positionPlan.map((p, idx) => (
+                      <div key={`pp-${idx}`} className="flex-1 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
+                        <p className="text-sm font-black text-blue-400">{p.price}</p>
+                        <p className="text-[10px] text-slate-500">{p.positionPercent}%</p>
+                      </div>
+                    ))}
+                  </div>
+                  {analysis.tradingPlan.logicBasedStopLoss && (
+                    <div className="flex items-start gap-2 text-xs text-rose-300 bg-rose-500/5 p-2.5 rounded-lg border border-rose-500/10">
+                      <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                      <span>{analysis.tradingPlan.logicBasedStopLoss}</span>
+                    </div>
+                  )}
+                  {analysis.tradingPlan.riskRewardRatio && (
+                    <p className="text-[10px] text-slate-500">风险收益比: <span className="font-bold text-emerald-400">{analysis.tradingPlan.riskRewardRatio}</span></p>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
         {/* Data Integrity Report */}
         {dataVerification && dataVerification.length > 0 && (
           <motion.div
@@ -206,7 +376,19 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
                 <ShieldCheck className="text-emerald-400" size={20} />
                 <h4 className="text-sm font-black uppercase tracking-widest text-emerald-400">数据完整性与交叉验证报告</h4>
               </div>
-              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">实时监测已开启</span>
+              <div className="flex items-center gap-3">
+                {analysis?.dataQuality && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                    getQualityLabel(analysis.dataQuality.score).color,
+                    "bg-white/5 border-white/10"
+                  )}>
+                    <Database size={10} />
+                    综合质量: {analysis.dataQuality.score}%
+                  </div>
+                )}
+                <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">实时监测已开启</span>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {dataVerification.map((item, idx) => (
@@ -233,7 +415,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className={`h-full rounded-full ${item.confidence > 90 ? 'bg-emerald-500' : 'bg-amber-500'}`}
                           style={{ width: `${item.confidence}%` }}
                         />
@@ -257,99 +439,99 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
               <motion.div
                 key={msgKey}
                 initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ type: "spring", stiffness: 100, damping: 15 }}
-              className="flex gap-6 group max-w-4xl mx-auto"
-            >
-              <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 group-hover:scale-110 shadow-lg ${roleColors[msg.role] || "text-slate-400 bg-slate-800 border-slate-700"}`}>
-                {roleIcons[msg.role] || <MessageSquare size={24} />}
-              </div>
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-lg border shadow-sm ${roleColors[msg.role] || "text-slate-300 bg-slate-800 border-slate-700"}`}>
-                      {roleNames[msg.role] || msg.role}
-                    </span>
-                    {getWeightInfo(msg.role)?.isExpert && (
-                      <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20 flex items-center gap-1.5 animate-pulse">
-                        <Award size={14} />
-                        行业专家 ({getWeightInfo(msg.role)?.expertiseArea})
-                      </span>
-                    )}
-                    {msg.type === "research" && (
-                      <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-lg border border-cyan-500/20 flex items-center gap-1.5">
-                        <Search size={14} />
-                        深度研究
-                      </span>
-                    )}
-                    {msg.type === "review" && (
-                      <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20 flex items-center gap-1.5">
-                        <UserCheck size={14} />
-                        专家评审
-                      </span>
-                    )}
-                    {msg.type === "fact_check" && (
-                      <span className="text-xs font-bold text-rose-400 bg-rose-500/10 px-3 py-1 rounded-lg border border-rose-500/20 flex items-center gap-1.5">
-                        <AlertTriangle size={14} />
-                        一致性监测
-                      </span>
-                    )}
-                    {msg.type === "user_question" && (
-                      <span className="text-xs font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5">
-                        <HelpCircle size={14} />
-                        用户提问
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-slate-500 font-mono font-bold">
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </span>
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ type: "spring", stiffness: 100, damping: 15 }}
+                className="flex gap-6 group max-w-4xl mx-auto"
+              >
+                <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 group-hover:scale-110 shadow-lg ${roleColors[msg.role] || "text-slate-400 bg-slate-800 border-slate-700"}`}>
+                  {roleIcons[msg.role] || <MessageSquare size={24} />}
                 </div>
-                <div className="relative">
-                  <div className={`text-[15px] leading-7 p-6 rounded-3xl rounded-tl-none border shadow-xl transition-all duration-300 ${
-                    msg.type === "research" ? "bg-[#0b1b26] border-cyan-500/30 text-cyan-50 shadow-cyan-900/20 group-hover:border-cyan-500/50" :
-                    msg.type === "review" ? "bg-[#10101f] border-indigo-500/30 text-indigo-50 shadow-indigo-900/20 group-hover:border-indigo-500/50" :
-                    msg.type === "fact_check" ? "bg-[#1f0f13] border-rose-500/30 text-rose-50 shadow-rose-900/20 group-hover:border-rose-500/50" :
-                    msg.type === "user_question" ? "bg-slate-800 border-slate-600 text-slate-200 shadow-black/20" :
-                    "bg-slate-800/80 border-slate-700 text-slate-200 shadow-black/20 group-hover:border-slate-500"
-                  }`}>
-                    <div className="prose prose-invert prose-base max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content}
-                      </ReactMarkdown>
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-lg border shadow-sm ${roleColors[msg.role] || "text-slate-300 bg-slate-800 border-slate-700"}`}>
+                        {roleNames[msg.role] || msg.role}
+                      </span>
+                      {getWeightInfo(msg.role)?.isExpert && (
+                        <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20 flex items-center gap-1.5 animate-pulse">
+                          <Award size={14} />
+                          行业专家 ({getWeightInfo(msg.role)?.expertiseArea})
+                        </span>
+                      )}
+                      {msg.type === "research" && (
+                        <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-lg border border-cyan-500/20 flex items-center gap-1.5">
+                          <Search size={14} />
+                          深度研究
+                        </span>
+                      )}
+                      {msg.type === "review" && (
+                        <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20 flex items-center gap-1.5">
+                          <UserCheck size={14} />
+                          专家评审
+                        </span>
+                      )}
+                      {msg.type === "fact_check" && (
+                        <span className="text-xs font-bold text-rose-400 bg-rose-500/10 px-3 py-1 rounded-lg border border-rose-500/20 flex items-center gap-1.5">
+                          <AlertTriangle size={14} />
+                          一致性监测
+                        </span>
+                      )}
+                      {msg.type === "user_question" && (
+                        <span className="text-xs font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5">
+                          <HelpCircle size={14} />
+                          用户提问
+                        </span>
+                      )}
                     </div>
-
-                    {msg.references && msg.references.length > 0 && (
-                      <div className="mt-5 pt-5 border-t border-white/10">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                          <ExternalLink size={14} />
-                          引用来源
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {msg.references.map((ref, idx) => (
-                            <a
-                              key={`ref-${idx}-${ref.url}`}
-                              href={ref.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-medium text-cyan-400 hover:text-white bg-cyan-950/40 border border-cyan-500/20 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5"
-                            >
-                              {ref.title.length > 30 ? ref.title.substring(0, 30) + '...' : ref.title}
-                              <ExternalLink size={12} />
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <span className="text-xs text-slate-500 font-mono font-bold">
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
                   </div>
-                  {/* Subtle accent line dropshadow focus */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-full opacity-60 ${(roleColors[msg.role] || "bg-slate-600").split(' ')[0]}`} />
+                  <div className="relative">
+                    <div className={`text-[15px] leading-7 p-6 rounded-3xl rounded-tl-none border shadow-xl transition-all duration-300 ${msg.type === "research" ? "bg-[#0b1b26] border-cyan-500/30 text-cyan-50 shadow-cyan-900/20 group-hover:border-cyan-500/50" :
+                        msg.type === "review" ? "bg-[#10101f] border-indigo-500/30 text-indigo-50 shadow-indigo-900/20 group-hover:border-indigo-500/50" :
+                          msg.type === "fact_check" ? "bg-[#1f0f13] border-rose-500/30 text-rose-50 shadow-rose-900/20 group-hover:border-rose-500/50" :
+                            msg.type === "user_question" ? "bg-slate-800 border-slate-600 text-slate-200 shadow-black/20" :
+                              "bg-slate-800/80 border-slate-700 text-slate-200 shadow-black/20 group-hover:border-slate-500"
+                      }`}>
+                      <div className="prose prose-invert prose-base max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+
+                      {msg.references && msg.references.length > 0 && (
+                        <div className="mt-5 pt-5 border-t border-white/10">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <ExternalLink size={14} />
+                            引用来源
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {msg.references.map((ref, idx) => (
+                              <a
+                                key={`ref-${idx}-${ref.url}`}
+                                href={ref.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-medium text-cyan-400 hover:text-white bg-cyan-950/40 border border-cyan-500/20 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5"
+                              >
+                                {ref.title.length > 30 ? ref.title.substring(0, 30) + '...' : ref.title}
+                                <ExternalLink size={12} />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {/* Subtle accent line dropshadow focus */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-full opacity-60 ${(roleColors[msg.role] || "bg-slate-600").split(' ')[0]}`} />
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          )})}
+              </motion.div>
+            )
+          })}
         </AnimatePresence>
-        
+
         {messages.length === 0 && !isDiscussing && (
           <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
             <MessageSquare size={64} strokeWidth={1} />

@@ -43,7 +43,7 @@ describe('Deep Research Specialist Prompt Requirements', () => {
       ok: true,
       json: async () => []
     });
-    
+
     // Mock AI response
     (geminiService.generateContentWithUsage as any).mockResolvedValue({
       text: JSON.stringify({
@@ -62,10 +62,10 @@ describe('Deep Research Specialist Prompt Requirements', () => {
 
   it('should contain dynamic indicator selection and cross-verification instructions', async () => {
     await startAgentDiscussion(mockAnalysis);
-    
+
     const lastCall = (geminiService.generateContentWithUsage as any).mock.calls[0];
     const prompt = lastCall[1].contents;
-    
+
     expect(prompt).toContain('动态指标选择');
     expect(prompt).toContain('多源数据交叉验证 (MANDATORY)');
     expect(prompt).toContain('对比至少两个不同来源的数据');

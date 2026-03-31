@@ -34,7 +34,8 @@ import {
   RefreshCcw,
   RefreshCw,
   Clock,
-  Layers
+  Layers,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -42,6 +43,7 @@ import { twMerge } from 'tailwind-merge';
 import { Market, MarketOverview, StockAnalysis, AgentMessage, GeminiConfig, Scenario, Catalyst, SensitivityFactor, ExpectationGap, AnalystWeight, CalculationResult, TradingPlanVersion, AgentDiscussion } from './types';
 import { analyzeStock, getMarketOverview, sendChatMessage, getDailyReport, getStockReport, getChatReport, startAgentDiscussion, getDiscussionReport, saveAnalysisToHistory, getHistoryContext } from './services/aiService';
 import { getBeijingDate, generateHistoryItemKey } from './services/dateUtils';
+import { calculateQualityScore, getQualityLabel } from './services/dataQualityService';
 import { useConfigStore } from './stores/useConfigStore';
 import { useUIStore } from './stores/useUIStore';
 import { useMarketStore } from './stores/useMarketStore';
@@ -838,13 +840,35 @@ export default function App() {
                             研讨会核心结论与场景分析
                           </div>
                         {dataFreshnessStatus && (
-                          <div className={clsx(
-                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                            dataFreshnessStatus === "Fresh" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                            dataFreshnessStatus === "Warning" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                            "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                          )}>
-                            {dataFreshnessStatus} Data
+                          <div className="flex items-center gap-2">
+                             {analysis.dataQuality && (
+                              <div className={cn(
+                                "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-lg shadow-emerald-500/5",
+                                getQualityLabel(analysis.dataQuality.score).color,
+                                "bg-white/5 border-white/10"
+                              )}>
+                                <Database size={10} />
+                                Data Health: {analysis.dataQuality.score}% - {getQualityLabel(analysis.dataQuality.score).label}
+                              </div>
+                            )}
+                            <div className={clsx(
+                              "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-lg",
+                              dataFreshnessStatus === "Fresh" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-emerald-500/5" :
+                              dataFreshnessStatus === "Warning" ? "bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-amber-500/5" :
+                              "bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-rose-500/5 animate-pulse"
+                            )}>
+                              {dataFreshnessStatus === "Stale" ? (
+                                <span className="flex items-center gap-1">
+                                  <AlertCircle size={10} />
+                                  STALE DATA detected
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck size={10} />
+                                  {dataFreshnessStatus} Data
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </h3>

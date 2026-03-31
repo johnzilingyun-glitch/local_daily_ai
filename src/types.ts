@@ -15,6 +15,15 @@ export interface StockInfo {
   dataFreshness?: string; // Timestamp from MCP/API
   dataSource?: string; // e.g. "FMP", "Bloomberg"
   sourceWeight?: number; // 0.0 - 1.0
+  dataQuality?: DataQuality;
+}
+
+export interface DataQuality {
+  score: number; // 0-100
+  lastSync: string;
+  sourcePriority: "Official API" | "Search/Scraped" | "AI Estimated";
+  isStale: boolean;
+  missingFields: string[];
 }
 
 export interface NewsItem {
@@ -109,6 +118,9 @@ export interface TradingPlan {
   stopLoss: string;
   strategy: string;
   strategyRisks: string;
+  positionPlan?: { price: string; positionPercent: number }[]; // 分层建仓
+  logicBasedStopLoss?: string; // 基于逻辑证伪的止损条件
+  riskRewardRatio?: number;
 }
 
 export interface TradingPlanVersion {
@@ -140,6 +152,17 @@ export interface StockAnalysis {
   tradingPlan?: TradingPlan;
   tradingPlanHistory?: TradingPlanVersion[];
   scenarios?: Scenario[];
+  coreVariables?: CoreVariable[];
+  businessModel?: BusinessModel;
+  quantifiedRisks?: QuantifiedRisk[];
+  riskAdjustedValuation?: number;
+  dataQuality?: DataQuality;
+  backtestResult?: {
+    previousDate: string;
+    previousRecommendation: string;
+    actualReturn: string;
+    learningPoint: string;
+  };
   valuationMatrix?: Scenario[];
   stressTestLogic?: string;
   catalystList?: Catalyst[];
@@ -197,11 +220,11 @@ export interface ChatMessage {
   content: string;
 }
 
-export type AgentRole = 
-  | "Technical Analyst" 
-  | "Fundamental Analyst" 
-  | "Sentiment Analyst" 
-  | "Risk Manager" 
+export type AgentRole =
+  | "Technical Analyst"
+  | "Fundamental Analyst"
+  | "Sentiment Analyst"
+  | "Risk Manager"
   | "Contrarian Strategist"
   | "Deep Research Specialist"
   | "Professional Reviewer"
@@ -279,6 +302,10 @@ export interface AgentDiscussion {
   calculations?: CalculationResult[];
   dataFreshnessStatus?: "Fresh" | "Stale" | "Warning";
   dataVerification?: DataVerification[];
+  coreVariables?: CoreVariable[];
+  businessModel?: BusinessModel;
+  quantifiedRisks?: QuantifiedRisk[];
+  riskAdjustedValuation?: number;
   backtestResult?: {
     previousDate: string;
     previousRecommendation: string;
@@ -315,6 +342,36 @@ export interface DataVerification {
   discrepancy?: string;
   confidence: number; // 0-100
   lastChecked: string;
+}
+
+// === 阶段 1：核心变量体系 (Core Variable System) ===
+export interface CoreVariable {
+  name: string;            // 变量名，如"出货量"、"碳酸锂价格"
+  value: number | string;  // 当前值
+  unit: string;            // 单位，如 GWh、元/吨
+  marketExpect: number | string; // 市场一致预期
+  delta: string;           // 偏离说明，如 "+5% vs 预期"
+  reason: string;          // 偏离原因
+  evidenceLevel: "财报" | "研报共识" | "第三方监控" | "推算" | "信息缺失";
+}
+
+export type BusinessType = "manufacturing" | "saas" | "banking" | "retail" | "healthcare" | "tech" | "other";
+
+export interface BusinessModel {
+  businessType: BusinessType;         // 行业类型
+  formula: string;                     // 利润公式，如 "利润 = 产量 × (售价 - 成本)"
+  drivers: Record<string, string>;     // 关键因子，如 { volume: "40 GWh", price: "5000 元/GWh" }
+  projectedProfit: string;             // 预测利润
+  confidenceScore: number;             // 0-100 置信度
+}
+
+// === 阶段 2：风险概率化 (Quantified Risk) ===
+export interface QuantifiedRisk {
+  name: string;            // 风险名称
+  probability: number;     // 发生概率 0-100
+  impactPercent: number;   // 对利润的影响幅度 (负数表示损失)
+  expectedLoss: number;    // 期望损失 = probability × impactPercent / 100
+  mitigation: string;      // 对冲/缓释手段
 }
 
 export interface GeminiConfig {

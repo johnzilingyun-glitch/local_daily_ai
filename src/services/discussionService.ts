@@ -2,36 +2,53 @@ import { GoogleGenAI } from "@google/genai";
 import { createAI, withRetry, parseJsonResponse, generateContentWithUsage, GEMINI_MODEL } from "./geminiService";
 import { StockAnalysis, AgentMessage, Scenario, AgentDiscussion, GeminiConfig } from "../types";
 import { getCommoditiesData } from "./marketService";
+import { getPreviousStockAnalysis } from "./adminService";
+import { performBacktest, BacktestResult } from "./backtestService";
 
 function formatCommoditiesToMarkdown(data: any[]): string {
   if (!data || data.length === 0) return "No real-time commodity data available.";
-  
+
   let table = "| 商品种类 | 实时价格 | 24h 涨跌幅 | 单位 | 最后更新 |\n";
   table += "| --- | --- | --- | --- | --- |\n";
-  
+
   data.forEach(item => {
     const change = item.changePercent > 0 ? `+${item.changePercent}%` : `${item.changePercent}%`;
     table += `| ${item.name} (${item.symbol}) | $${item.price} | ${change} | ${item.unit} | ${item.lastUpdated} |\n`;
   });
-  
+
   return table;
 }
 
 export async function startAgentDiscussion(
-  analysis: StockAnalysis, 
-  config?: GeminiConfig, 
+  analysis: StockAnalysis,
+  config?: GeminiConfig,
   history?: AgentMessage[]
 ): Promise<AgentDiscussion> {
   const ai = createAI(config);
   const historyContext = history ? `\n\n**PREVIOUS DISCUSSION HISTORY**:\n${JSON.stringify(history)}` : "";
   const commoditiesData = await getCommoditiesData();
+  const previousAnalysis = await getPreviousStockAnalysis(analysis.stockInfo.symbol);
+  const backtest = performBacktest(analysis, previousAnalysis);
+
+  const memoryContext = backtest ? `
+    **MEMORY & FEEDBACK LOOP (LEARNING FROM PAST)**:
+    - 我们在 ${backtest.previousDate} 对该股票进行过深度分析。
+    - 当时价格为 ${backtest.previousPrice}，当前价格为 ${backtest.currentPrice}（变动: ${backtest.returnSincePrev}）。
+    - 当时给出的建议是 ${backtest.previousRecommendation}，目标价为 ${backtest.previousTarget}，止损价为 ${backtest.previousStopLoss}。
+    - **当前状态**: ${backtest.status}（预测得分/准确率: ${backtest.accuracy}/100）。
+    - **强制指令**: 深度研究专家和首席策略师必须在讨论中明确引用上述历史业绩情况。如果是"预测被打脸"或"逻辑漂移"，必须解释原因并修正逻辑；如果是"目标达成"，则讨论是否该止盈或提高目标价。
+  ` : "";
+
   const prompt = `
     你是一支由8位顶级金融分析精英组成的专家团队，正在召开高规格联席研讨会议，对以下股票进行机构级深度研讨。
     这不是一份普通分析报告，而是一场真实的、多轮的、有激烈辩论和数据交锋的专业级研讨会议。
 
     **REAL-TIME COMMODITY DATA (GROUND TRUTH - 2026-03-30)**:
     ${formatCommoditiesToMarkdown(commoditiesData)}
-    **STRICT RELEVANCE CONSTRAINT (CRITICAL)**: Use the commodity data above ONLY if it is a DIRECT and MATERIAL cost or revenue driver for the stock's industry. 
+    **IMPORTANT**: Use the commodity data above ONLY if it is logically relevant to the stock's industry. 
+    
+    ${memoryContext}
+    - **STRICT RELEVANCE CONSTRAINT (CRITICAL)**: Use the commodity data above ONLY if it is a DIRECT and MATERIAL cost or revenue driver for the stock's industry. 
     - **DYNAMIC VARIABLE SELECTION (MANDATORY)**: If the provided commodities (Gold, Oil, Copper, etc.) are NOT highly relevant to the target stock, you MUST **ignore them completely**. 
     - **SEARCH-DRIVEN ANCHORS**: Instead, use Google Search to identify the 2-3 most critical macro variables or raw material prices for this specific stock (e.g., Lithium Carbonate for EV batteries, Pulp for paper, DRAM prices for semiconductors, Freight rates for shipping, etc.).
     - **FAILURE TO COMPLY**: Including irrelevant variables (like Oil for a software company) will be treated as a "hallucination/logic failure".
@@ -40,7 +57,7 @@ export async function startAgentDiscussion(
     **团队成员（8位，按发言顺序）**：
     1. **深度研究专家 (Deep Research Specialist)**：第一个发言，负责全维度数据穿透调研。
        - **全维度数据穿透调研 (CRITICAL)**：严禁只看表面财报。你必须穿透到业务底层，分析：管理层历史诚信与执行力、供应链议价权、客户粘性（转换成本）、技术护城河的宽度。利用 Google Search 挖掘 these 非公开或深层信息。
-       - **动态指标与关联查询 (CRITICAL)**：严禁使用死板的通用模板。你必须根据标的的行业属性（如：医药看集采政策/研发管线，科技看先进制程/算力需求，消费看同店增长/毛利拐点）**主动使用 Google Search 关联查询**最核心的 4-6 个量化指标。
+       - **动态指标选择 (CRITICAL)**：拒绝死板的固定模板。你必须根据标的的行业属性（如：医药看集采政策/研发管线，科技看先进制程/算力需求，消费看同店增长/毛利拐点）**主动使用 Google Search 关联查询**最核心的 4-6 个量化指标指标。
        - **定义“证据级别” (MANDATORY)**：在动态指标选择时，必须标注该指标的来源及其证据级别（如：财报提及、主流研报共识、第三方实时数据监控）。
        - **多源数据交叉验证 (MANDATORY)**：必须对比至少两个不同来源的数据（如：官方财报 vs 卖方一致预期 vs 实时监控数据）。**必须明确列出两个不同来源的具体数值**。若存在偏差（>1%），必须在发言中进行深度逻辑溯源并给出修正建议。
        - **表格 1：实时核心指标与业绩偏离度 (MANDATORY)**：必须包含以下列：指标 (2026E)、实时数值、市场共识预期、偏离度 (%)、备注。指标应包括但不限于 EPS、PE (Forward)、ROE、股息率。**数据源一致性 (CRITICAL)**：必须优先使用搜索获取的最新实时数据，并明确标注数据日期。**异常值处理 (MANDATORY)**：若搜索不到市场预期数据（如冷门小盘股），必须注明“基于历史平均值推算”或“信息缺失”，严禁编造数据。
@@ -53,6 +70,7 @@ export async function startAgentDiscussion(
        - **预期偏差识别 (Expectation Gap)**：必须明确识别市场共识中的盲点，指出 Alpha 来源。
        - **目标价与情绪评分 (MANDATORY)**：必须给出 6 个月目标区间（含置信区间）及情绪评分（0-100）。**置信区间逻辑 (NEW)**：根据行业波动率自动调整区间宽度。高波动行业（如数字货币、纯概念股）应放宽区间；低波动行业（如公用事业、长江电力）应收窄区间。
        - **内容要求**：必须包含上述 2 个 Markdown 表格，所有关键数据必须有明确的时间戳和来源标注（Source: ...）。
+       - **[结构化输出] 核心变量 (MANDATORY)**：除了 Markdown 内容外，你还必须提炼出 3-5 个核心经济变量，填入返回 JSON 的 \`coreVariables\` 数组。每个变量需包含：name（变量名）、value（当前值）、unit（单位）、marketExpect（市场预期）、delta（偏离说明）、reason（偏离原因）、evidenceLevel（证据级别：财报/研报共识/第三方监控/推算/信息缺失）。
     
     2. **技术分析师 (Technical Analyst)**：负责技术面深度分析。必须提供：
        - 趋势定性（主升浪/调整浪/下跌通道，引用具体价位和涨幅数据）
@@ -66,6 +84,7 @@ export async function startAgentDiscussion(
        - **估值逻辑拆解**：当前PE/PB vs 行业均值 vs 历史分位，并结合深度研究专家的最新数据进行动态调整。
        - **对比法/DCF估值推导的目标价**：附带详细计算过程，并说明假设条件的合理性。
        - **对其他分析师观点的明确引用和回应**。
+       - **[结构化输出] 商业模型 (MANDATORY)**：你必须识别该公司的行业类型（manufacturing/saas/banking/retail/healthcare/tech/other），并给出量化利润公式（如：利润 = 产量 × (售价 - 成本)）。将结果填入返回 JSON 的 \`businessModel\` 字段，包含：businessType、formula、drivers（关键因子及其值）、projectedProfit（预测利润）、confidenceScore（0-100 置信度）。
     
     4. **情绪分析师 (Sentiment Analyst)**：负责市场情绪与资金面分析。必须提供：
        - 北向资金流向具体数据
@@ -78,6 +97,7 @@ export async function startAgentDiscussion(
        - 对牛方观点的直接反驳（必须指名道姓驳斥）
        - 核心量化风险指标和止损警示线
        - 悲观情境下的EPS下修预测和对应目标价
+       - **[结构化输出] 量化风险矩阵 (MANDATORY)**：对每个主要风险，你必须评估：概率 p (0-100)、对利润的影响幅度 Δ% (负数)、期望损失 = p × Δ / 100。将结果填入返回 JSON 的 \`quantifiedRisks\` 数组，每项含：name、probability、impactPercent、expectedLoss、mitigation（对冲手段）。同时计算 \`riskAdjustedValuation\`（综合风险折价后的估值）。
     
     6. **反向策略师 (Contrarian Strategist)**：负责挑战所有共识。必须提供：
        - "拥挤交易"风险分析
@@ -98,6 +118,7 @@ export async function startAgentDiscussion(
        - 明确的操作建议（买入/持有/卖出）
        - 具体的价格锚点和时间框架
        - 关键风险提示
+       - **[结构化输出] 分层建仓计划 (MANDATORY)**：在 \`tradingPlan\` 中增加 \`positionPlan\` 数组（每项含 price 和 positionPercent）和 \`logicBasedStopLoss\`（基于逻辑证伪而非固定百分比的止损条件，如"若核心变量X跌破阈值Y则清仓"）和 \`riskRewardRatio\`（风险收益比数值）。
 
     **分析标的数据**：${JSON.stringify(analysis)}
     ${historyContext}
@@ -150,8 +171,29 @@ export async function startAgentDiscussion(
         "targetPrice": "精确的目标价位（含计算逻辑）",
         "stopLoss": "精确的止损价位（含逻辑）",
         "strategy": "详细的操作策略",
-        "strategyRisks": "策略特定风险提示"
+        "strategyRisks": "策略特定风险提示",
+        "positionPlan": [
+          { "price": "145", "positionPercent": 30 },
+          { "price": "138", "positionPercent": 40 },
+          { "price": "135", "positionPercent": 30 }
+        ],
+        "logicBasedStopLoss": "基于逻辑证伪的止损条件（非固定百分比）",
+        "riskRewardRatio": 2.5
       },
+      "coreVariables": [
+        { "name": "核心变量名", "value": "当前值", "unit": "单位", "marketExpect": "市场预期", "delta": "偏离说明", "reason": "偏离原因", "evidenceLevel": "财报/研报共识/第三方监控/推算/信息缺失" }
+      ],
+      "businessModel": {
+        "businessType": "manufacturing/saas/banking/retail/healthcare/tech/other",
+        "formula": "利润推演公式",
+        "drivers": { "因子名": "因子值" },
+        "projectedProfit": "预测利润",
+        "confidenceScore": 85
+      },
+      "quantifiedRisks": [
+        { "name": "风险名称", "probability": 30, "impactPercent": -40, "expectedLoss": -12, "mitigation": "对冲手段" }
+      ],
+      "riskAdjustedValuation": 150,
       "scenarios": [
         { "case": "Bull", "probability": 30, "keyInputs": "乐观情境的关键假设（具体数据）", "targetPrice": "乐观目标价", "marginOfSafety": "安全边际", "expectedReturn": "预期回报率", "logic": "完整的逻辑推演链" },
         { "case": "Base", "probability": 50, "keyInputs": "基准情境的关键假设", "targetPrice": "基准目标价", "marginOfSafety": "安全边际", "expectedReturn": "预期回报率", "logic": "完整的逻辑推演链" },
@@ -202,7 +244,7 @@ export async function startAgentDiscussion(
     const result = await generateContentWithUsage(ai, {
       model: config?.model || GEMINI_MODEL,
       contents: prompt,
-      config: { 
+      config: {
         responseMimeType: "application/json",
         tools: [{ googleSearch: {} }]
       }
@@ -211,7 +253,17 @@ export async function startAgentDiscussion(
   });
 
   const parsed = parseJsonResponse<AgentDiscussion>(response);
-  
+
+  // Inject backtest results back into the response for UI display
+  if (backtest) {
+    parsed.backtestResult = {
+      previousDate: backtest.previousDate,
+      previousRecommendation: backtest.previousRecommendation,
+      actualReturn: backtest.returnSincePrev,
+      learningPoint: backtest.learningPoint
+    };
+  }
+
   // Add unique IDs to messages for stable React keys
   if (parsed.messages) {
     parsed.messages = parsed.messages.map((msg, idx) => ({
@@ -219,6 +271,6 @@ export async function startAgentDiscussion(
       id: msg.id || `msg-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`
     }));
   }
-  
+
   return parsed;
 }

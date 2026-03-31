@@ -5,6 +5,7 @@ import { Market, StockAnalysis, AgentMessage, Scenario, AgentDiscussion, GeminiC
 import { getHistoryContext, saveAnalysisToHistory } from "./adminService";
 import { getBeijingDate } from "./dateUtils";
 import { getCommoditiesData } from "./marketService";
+import { calculateQualityScore } from "./dataQualityService";
 
 export async function analyzeStock(symbol: string, market: Market, config?: GeminiConfig): Promise<StockAnalysis> {
   const ai = createAI(config);
@@ -44,6 +45,11 @@ export async function analyzeStock(symbol: string, market: Market, config?: Gemi
   });
 
   const analysis = parseJsonResponse<StockAnalysis>(response);
+  
+  // Calculate and associate data quality metadata
+  analysis.dataQuality = calculateQualityScore(analysis.stockInfo);
+  analysis.stockInfo.dataQuality = analysis.dataQuality;
+
   analysis.id = `stock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   return analysis;
