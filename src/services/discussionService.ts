@@ -86,11 +86,10 @@ export async function startAgentDiscussion(
        - **对其他分析师观点的明确引用和回应**。
        - **[结构化输出] 商业模型 (MANDATORY)**：你必须识别该公司的行业类型（manufacturing/saas/banking/retail/healthcare/tech/other），并给出量化利润公式（如：利润 = 产量 × (售价 - 成本)）。将结果填入返回 JSON 的 \`businessModel\` 字段，包含：businessType、formula、drivers（关键因子及其值）、projectedProfit（预测利润）、confidenceScore（0-100 置信度）。
     
-    4. **情绪分析师 (Sentiment Analyst)**：负责市场情绪与资金面分析。必须提供：
-       - 北向资金流向具体数据
-       - 机构持仓变化（十大流通股东变化）
-       - 社交媒体情绪评分和关键讨论主题
-       - 融资融券余额变化趋势
+    4. **情绪分析师 (Sentiment Analyst)**：负责市场情绪与资金面分析。
+       - **资金结构探测 (CRITICAL)**：严禁只看散户情绪。你必须深度拆解资金结构：**北向资金进出、公募基金仓位变动、AH 股溢价率趋势**。利用 Google Search 查询最近一周的资金流向。
+       - **区分“出货”与“恐慌” (MANDATORY)**：严禁将“价格下跌+放量”简单视为“底部信号”。你必须分析这是属于“机构有序撤离”还是“非理性割肉”。
+       - **情绪量化指标**：给出具体的融资融券余额变化、社交媒体热度及其与股价的相关性。
     
     5. **风险合规官 (Risk Manager)**：负责极端风险场景分析。必须提供：
        - 明确的"黑天鹅"剧本和量化跌幅预期
@@ -105,20 +104,18 @@ export async function startAgentDiscussion(
        - 反向操作建议和目标价
        - 必须与牛方形成鲜明对立，提供具体的量化反驳
     
-    7. **高级评审专家 (Professional Reviewer)**：负责逻辑审计与压力测试。
-       - **数据一致性与相关性审计 (CRITICAL)**：审查前述所有分析师引用的数据是否一致，且**必须严厉打击“套路化/模板化”分析**。如果发现分析师在分析非相关标的（如医药股）时死板引用无关大宗商品（如原油、黄金），必须在评审中作为严重逻辑漏洞指出并要求修正。
-       - **逻辑审计**：识别前述所有分析师观点中最薄弱的环节。
-       - **预期差解释**：Alpha来源的深度验证。
-       - **主动压力测试**：如果基准假设失效的演化路径。
-       - **SOTP（分类加总估值）矩阵表格**：含业务板块、贡献利润、估值倍数、合理估值、逻辑支撑。
+    7. **高级评审专家 (Professional Reviewer)**：负责逻辑审计与数据脱水。
+       - **打击叙事陷阱 (CRITICAL)**：严厉审查所有分析师引用的“叙事逻辑”是否具有虚假的线性对冲（如：硅料下跌能被出口完全抵消）。必须明确指出**利润结构差异**和**时间错配风险**。
+       - **估值脱水 (MANDATORY)**：如果基本面分析师给出的 PE/PB 明显偏离历史均值，必须强制要求其提供**对标西门子能源、日立能源等国际龙头的锚定逻辑**。
+       - **模型一致性审计**：审计 Risk Adjusted Valuation 逻辑是否与风控官的黑天鹅剧本匹配。
+       - **SOTP 决策矩阵**：输出分类加总估值表，包含板块、估值倍数、合理估值、锚定标的。
        - **审查官最终指令**：策略修正和风险监控红线。
     
-    8. **首席策略师 (Chief Strategist)**：最后发言，负责综合结论。必须提供：
-       - 综合所有分析师的核心观点
-       - 明确的操作建议（买入/持有/卖出）
-       - 具体的价格锚点和时间框架
-       - 关键风险提示
-       - **[结构化输出] 分层建仓计划 (MANDATORY)**：在 \`tradingPlan\` 中增加 \`positionPlan\` 数组（每项含 price 和 positionPercent）和 \`logicBasedStopLoss\`（基于逻辑证伪而非固定百分比的止损条件，如"若核心变量X跌破阈值Y则清仓"）和 \`riskRewardRatio\`（风险收益比数值）。
+    8. **首席策略师 (Chief Strategist)**：最后发言，负责统一决策。
+       - **决策统一化 (CRITICAL)**：严禁简单的观点汇总。你必须使用**概率加权框架**：Σ(乐观/中性/悲观概率 × 目标价) = **期望价格**。如果结果低于当前价，必须降低推荐级别。
+       - **分层时间维度结论 (MANDATORY)**：必须给出 1-2周（择时）、1-3月（波段）、3-6月（趋势）的阶梯式结论。
+       - **资源预算与仓位建议**：基于风险收益比和胜率，给出最大单头仓位 (%) 建议。
+       - **[结构化输出] 核心决策数据**：在返回 JSON 中增加 \`expectedValueOutcome\`（含计算公式）和 \`sensitivityMatrix\`（反映多变量对冲的真实利润冲击）。
 
     **分析标的数据**：${JSON.stringify(analysis)}
     ${historyContext}
@@ -209,6 +206,16 @@ export async function startAgentDiscussion(
         "isSignificant": true,
         "confidenceScore": 75
       },
+      "expectedValueOutcome": {
+        "expectedPrice": 27.5,
+        "calculationLogic": "Σ(P_i * Price_i) = 30%*32 + 50%*27 + 20%*21",
+        "confidenceInterval": "[21, 32]"
+      },
+      "sensitivityMatrix": [
+        { "variable": "硅料价格", "change": "-10%", "profitImpact": "-1.2B CNY", "timeLag": "Immediate" },
+        { "variable": "铜价/大宗", "change": "+5%", "profitImpact": "-0.3B CNY", "timeLag": "Delayed (3mo)" },
+        { "variable": "出口订单", "change": "+10%", "profitImpact": "+0.5B CNY", "timeLag": "Long-term (18mo)" }
+      ],
       "controversialPoints": ["核心分歧点1", "核心分歧点2"],
       "calculations": [
         { "formulaName": "估值模型名称", "inputs": { "参数名": "参数值" }, "output": "计算结果", "timestamp": "${new Date().toISOString()}" }

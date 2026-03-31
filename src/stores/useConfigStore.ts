@@ -14,6 +14,8 @@ interface ConfigState {
   addTokenUsage: (usage: { promptTokens?: number, candidatesTokens?: number, totalTokens?: number }) => void;
   availableModels: { id: string, name: string, description: string }[];
   setAvailableModels: (models: { id: string, name: string, description: string }[]) => void;
+  feishuWebhook: string;
+  setFeishuWebhook: (webhook: string) => void;
 }
 
 export const useConfigStore = create<ConfigState>((set) => {
@@ -47,6 +49,11 @@ export const useConfigStore = create<ConfigState>((set) => {
     setConfig: (config) => {
       localStorage.setItem('gemini_config', JSON.stringify(config));
       set({ geminiConfig: config, config: config });
+    },
+    feishuWebhook: localStorage.getItem('feishu_webhook') || '',
+    setFeishuWebhook: (webhook) => {
+      localStorage.setItem('feishu_webhook', webhook);
+      set({ feishuWebhook: webhook });
     },
   };
 });

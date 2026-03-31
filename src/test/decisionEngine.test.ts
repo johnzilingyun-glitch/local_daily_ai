@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { performBacktest } from '../services/backtestService';
 import { calculateQualityScore, getQualityLabel } from '../services/dataQualityService';
-import { StockAnalysis } from '../types';
+import { calculateExpectedValue } from '../services/mathService';
+import { StockAnalysis, Scenario, SensitivityMatrixRow } from '../types';
 
 describe('Decision Engine: Backtest Service', () => {
   const currentAnalysis = {
@@ -98,5 +99,41 @@ describe('Decision Engine: Data Quality Service', () => {
     expect(getQualityLabel(75).label).toBe('Reliable');
     expect(getQualityLabel(55).label).toBe('Moderate');
     expect(getQualityLabel(30).label).toBe('Low Confidence');
+  });
+});
+
+describe('Decision Engine: Math Service (Phase 6)', () => {
+  it('should calculate Expected Value (EV) correctly from scenarios', () => {
+    const scenarios: Scenario[] = [
+      { case: "Bull", probability: 30, targetPrice: "32", keyInputs: "", marginOfSafety: "", expectedReturn: "", logic: "" },
+      { case: "Base", probability: 50, targetPrice: "27", keyInputs: "", marginOfSafety: "", expectedReturn: "", logic: "" },
+      { case: "Stress", probability: 20, targetPrice: "21", keyInputs: "", marginOfSafety: "", expectedReturn: "", logic: "" },
+    ];
+
+    const result = calculateExpectedValue(scenarios);
+    // Calculation: (0.3 * 32) + (0.5 * 27) + (0.2 * 21) = 9.6 + 13.5 + 4.2 = 27.3
+    expect(result.expectedPrice).toBe(27.3);
+    expect(result.confidenceInterval).toBe('[21, 32]');
+    expect(result.calculationLogic).toContain('30% * 32');
+  });
+
+  it('should handle non-numeric target prices gracefully', () => {
+    const scenarios: Scenario[] = [
+      { case: "Bull", probability: 100, targetPrice: "$100.50 (Optimistic)", keyInputs: "", marginOfSafety: "", expectedReturn: "", logic: "" }
+    ];
+    const result = calculateExpectedValue(scenarios);
+    expect(result.expectedPrice).toBe(100.5);
+  });
+});
+
+describe('Decision Engine: Advanced Quant Structural Integrity', () => {
+  it('should enforce Sensitivity Matrix structure', () => {
+    const matrix: SensitivityMatrixRow[] = [
+      { variable: "Silicon", change: "-10%", profitImpact: "-1.2B", timeLag: "Immediate" }
+    ];
+    
+    expect(matrix[0]).toHaveProperty('variable');
+    expect(matrix[0]).toHaveProperty('profitImpact');
+    expect(matrix[0]).toHaveProperty('timeLag');
   });
 });

@@ -64,38 +64,80 @@ export function extractJsonBlock(raw: string): string {
   // 1. Try to find triple backtick blocks
   const tripleBacktickMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   if (tripleBacktickMatch?.[1]) {
-    return tripleBacktickMatch[1].trim();
+    cleaned = tripleBacktickMatch[1].trim();
+  } else {
+    // Also try single backticks
+    const singleBacktickMatch = cleaned.match(/`\s*([\s\S]*?)\s*`/);
+    if (singleBacktickMatch?.[1]) {
+      cleaned = singleBacktickMatch[1].trim();
+    }
   }
 
-  // 2. Try to find single backtick blocks if they wrap the whole thing
-  const singleBacktickMatch = cleaned.match(/^`\s*([\s\S]*?)\s*`$/i);
-  if (singleBacktickMatch?.[1]) {
-    return singleBacktickMatch[1].trim();
-  }
-
-  // 3. Find the first { or [ and the last } or ]
+  // 2. Find the start of the JSON object or array
   const firstBrace = cleaned.indexOf("{");
   const firstBracket = cleaned.indexOf("[");
-  const lastBrace = cleaned.lastIndexOf("}");
-  const lastBracket = cleaned.lastIndexOf("]");
   
   let start = -1;
-  let end = -1;
+  let opener = '';
+  let closer = '';
   
-  // Determine if we are looking for an object or an array based on what comes first
   if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
     start = firstBrace;
-    end = lastBrace;
+    opener = '{';
+    closer = '}';
   } else if (firstBracket !== -1) {
     start = firstBracket;
-    end = lastBracket;
+    opener = '[';
+    closer = ']';
   }
   
-  if (start !== -1 && end !== -1 && end > start) {
-    return cleaned.slice(start, end + 1);
+  if (start === -1) {
+    throw new Error("Gemini returned a non-JSON response (No opener found).");
+  }
+
+  // 3. Robust balanced brace counting to find the actual end
+  let balance = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === opener) {
+        balance++;
+      } else if (char === closer) {
+        balance--;
+        if (balance === 0) {
+          // Found the matching closing brace!
+          return cleaned.slice(start, i + 1);
+        }
+      }
+    }
   }
   
-  throw new Error("Gemini returned a non-JSON response.");
+  // Fallback to simple slice if balancing fails (e.g. truncated)
+  const lastCloser = cleaned.lastIndexOf(closer);
+  if (lastCloser > start) {
+    return cleaned.slice(start, lastCloser + 1);
+  }
+  
+  throw new Error("Gemini returned a non-JSON response (Mismatched braces).");
 }
 
 export function parseJsonResponse<T>(raw: string): T {

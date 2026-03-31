@@ -157,6 +157,8 @@ export interface StockAnalysis {
   quantifiedRisks?: QuantifiedRisk[];
   riskAdjustedValuation?: number;
   dataQuality?: DataQuality;
+  expectedValueOutcome?: ExpectedValueOutcome;
+  sensitivityMatrix?: SensitivityMatrixRow[];
   backtestResult?: {
     previousDate: string;
     previousRecommendation: string;
@@ -264,6 +266,19 @@ export interface SensitivityFactor {
   formula?: string; // The standardized formula used
 }
 
+export interface SensitivityMatrixRow {
+  variable: string;    // e.g. "Silicon Price"
+  change: string;      // e.g. "-10%"
+  profitImpact: string; // e.g. "-1.2B CNY"
+  timeLag: string;     // e.g. "Immediate" vs "18-24mo"
+}
+
+export interface ExpectedValueOutcome {
+  expectedPrice: number;
+  calculationLogic: string; // "Σ(P_i * Price_i)"
+  confidenceInterval: string; // e.g. "[25, 30]"
+}
+
 export interface ExpectationGap {
   marketConsensus: string;
   ourView: string;
@@ -306,6 +321,8 @@ export interface AgentDiscussion {
   businessModel?: BusinessModel;
   quantifiedRisks?: QuantifiedRisk[];
   riskAdjustedValuation?: number;
+  expectedValueOutcome?: ExpectedValueOutcome;
+  sensitivityMatrix?: SensitivityMatrixRow[];
   backtestResult?: {
     previousDate: string;
     previousRecommendation: string;

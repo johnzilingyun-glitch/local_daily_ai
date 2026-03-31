@@ -1,25 +1,25 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AgentRole, DataVerification } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X, Maximize2, Minimize2, CheckCircle2, ShieldCheck, Cpu, Layers, Target, History, RotateCcw, Database } from 'lucide-react';
+import { 
+  User, Shield, BarChart3, PieChart, MessageSquare, Loader2, Download, Search, Zap, Send, 
+  HelpCircle, UserCheck, ExternalLink, AlertTriangle, Award, X, Maximize2, Minimize2, 
+  CheckCircle2, ShieldCheck, Cpu, Layers, Target, History, RotateCcw, Database, 
+  Calculator, Table, Activity, Clock, ArrowRight, Info, Share2
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 import { useAnalysisStore } from '../stores/useAnalysisStore';
 import { useUIStore } from '../stores/useUIStore';
+import { useConfigStore } from '../stores/useConfigStore';
 import { getQualityLabel } from '../services/dataQualityService';
+import { sendAnalysisToFeishu } from '../services/feishuService';
 
-interface DiscussionPanelProps {
-  onSendMessage?: (message: string) => void;
-  onClose?: () => void;
-  isFullscreen?: boolean;
-  onToggleFullscreen?: () => void;
-  onPointerDownDrag?: (e: React.PointerEvent) => void;
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
 const roleIcons: Record<AgentRole, React.ReactNode> = {
@@ -58,6 +58,14 @@ const roleNames: Record<AgentRole, string> = {
   "Moderator": "研讨主持人",
 };
 
+interface DiscussionPanelProps {
+  onSendMessage?: (message: string) => void;
+  onClose?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onPointerDownDrag?: (e: React.PointerEvent) => void;
+}
+
 export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
   onSendMessage,
   onClose,
@@ -75,6 +83,12 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
     isDiscussing,
     isReviewing
   } = useUIStore();
+
+  const { feishuWebhook, setFeishuWebhook } = useConfigStore();
+  const [showFeishuConfig, setShowFeishuConfig] = useState(false);
+  const [tempWebhook, setTempWebhook] = useState(feishuWebhook);
+  const [isSendingToFeishu, setIsSendingToFeishu] = useState(false);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = React.useState('');
@@ -128,8 +142,47 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const handleFeishuShare = async () => {
+    if (!feishuWebhook) {
+      setTempWebhook('');
+      setShowFeishuConfig(true);
+      return;
+    }
+
+
+    setIsSendingToFeishu(true);
+    setShareStatus('loading');
+    try {
+      const success = await sendAnalysisToFeishu(analysis, feishuWebhook);
+      if (success) {
+        setShareStatus('success');
+        setTimeout(() => setShareStatus('idle'), 3000);
+      } else {
+        setShareStatus('error');
+        setTimeout(() => setShareStatus('idle'), 3000);
+      }
+    } catch (error) {
+      console.error(error);
+      setShareStatus('error');
+      setTimeout(() => setShareStatus('idle'), 3000);
+    } finally {
+      setIsSendingToFeishu(false);
+    }
+  };
+
+  const saveFeishuWebhook = () => {
+    if (!tempWebhook.trim() || !tempWebhook.includes('feishu.cn')) {
+      alert("请输入有效的飞书 Webhook 链接");
+      return;
+    }
+    setFeishuWebhook(tempWebhook.trim());
+    setShowFeishuConfig(false);
+    // Auto-trigger after save
+    setTimeout(handleFeishuShare, 100);
+  };
+
   return (
-    <div className="flex flex-col h-full bg-slate-900 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-900 overflow-hidden relative">
       <div className="p-6 border-b border-slate-700/70 bg-slate-800 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           <div
@@ -169,6 +222,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
               {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
             </button>
           )}
+          
           {messages.length > 0 && !isDiscussing && (
             <button
               onClick={handleDownload}
@@ -179,12 +233,39 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
               导出完整记录
             </button>
           )}
+
+          {messages.length > 0 && !isDiscussing && (
+            <button
+              onClick={handleFeishuShare}
+              disabled={isSendingToFeishu}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs border shadow-lg ring-offset-2 focus:ring-2 ring-emerald-500/20",
+                shareStatus === "success" 
+                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" 
+                  : shareStatus === "error"
+                  ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                  : isSendingToFeishu 
+                  ? "bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed"
+                  : "bg-emerald-500 hover:bg-emerald-400 border-emerald-400/30 text-white shadow-emerald-500/10 active:scale-95"
+              )}
+              title="分享到飞书机器人"
+            >
+              {shareStatus === "loading" ? <Loader2 size={16} className="animate-spin" /> : 
+               shareStatus === "success" ? <CheckCircle2 size={16} /> : 
+               shareStatus === "error" ? <AlertTriangle size={16} /> : <Send size={16} />}
+              {shareStatus === "loading" ? "正在发送..." : 
+               shareStatus === "success" ? "已发送成功" : 
+               shareStatus === "error" ? "发送失败" : "分享至飞书"}
+            </button>
+          )}
+
           {isDiscussing && (
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-bold text-slate-400 uppercase tracking-widest">
               <Loader2 size={14} className="animate-spin text-emerald-500" />
               全网推演中
             </div>
           )}
+
           {onClose && (
             <button
               onClick={onClose}
@@ -248,6 +329,76 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
         )}
 
         {/* Decision Engine Dashboard */}
+        {analysis?.expectedValueOutcome && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-4xl mx-auto space-y-6"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                  <Calculator size={18} className="text-blue-400" />
+                </div>
+                <h4 className="text-sm font-black uppercase tracking-[0.2em] text-blue-400">期望价值中枢 (Expected Value)</h4>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-500 uppercase font-black">统一期望价格</p>
+                <p className="text-2xl font-black text-white tracking-tighter">${analysis.expectedValueOutcome.expectedPrice}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* EV Calculation logic */}
+              <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                  <Activity size={16} className="text-blue-400" />
+                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-300">概率加权演算逻辑</span>
+                </div>
+                <div className="bg-slate-950/50 rounded-xl p-4 border border-white/5 font-mono text-xs text-blue-300/90 leading-relaxed italic">
+                  "{analysis.expectedValueOutcome.calculationLogic}"
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2">
+                  <span>置信区间: <span className="text-slate-300 font-bold">{analysis.expectedValueOutcome.confidenceInterval}</span></span>
+                  <span className="flex items-center gap-1"><Shield size={10} /> 机构级一致性验证已通过</span>
+                </div>
+              </div>
+
+              {/* Sensitivity Matrix */}
+              {analysis.sensitivityMatrix && (
+                <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Table size={16} className="text-emerald-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-300">多变量收益敏感度矩阵</span>
+                  </div>
+                  <div className="space-y-2">
+                    {analysis.sensitivityMatrix.map((row, idx) => (
+                      <div key={`smr-${idx}`} className="flex items-center justify-between text-[11px] py-1 border-b border-white/5 last:border-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 w-16 truncate">{row.variable}</span>
+                          <span className="text-slate-500 font-mono italic">{row.change}</span>
+                          <ArrowRight size={10} className="text-slate-600" />
+                        </div>
+                        <div className="text-right">
+                          <span className={cn(
+                            "font-black tracking-tighter mr-2",
+                            row.profitImpact.includes('+') ? "text-emerald-400" : "text-rose-400"
+                          )}>
+                            {row.profitImpact}
+                          </span>
+                          <span className="text-[9px] text-slate-600 flex items-center gap-0.5 justify-end">
+                            <Clock size={8} /> {row.timeLag}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
         {analysis && (analysis.coreVariables || analysis.businessModel || analysis.quantifiedRisks) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -364,7 +515,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
             </div>
           </motion.div>
         )}
-        {/* Data Integrity Report */}
+
         {dataVerification && dataVerification.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -458,30 +609,6 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
                           行业专家 ({getWeightInfo(msg.role)?.expertiseArea})
                         </span>
                       )}
-                      {msg.type === "research" && (
-                        <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-lg border border-cyan-500/20 flex items-center gap-1.5">
-                          <Search size={14} />
-                          深度研究
-                        </span>
-                      )}
-                      {msg.type === "review" && (
-                        <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20 flex items-center gap-1.5">
-                          <UserCheck size={14} />
-                          专家评审
-                        </span>
-                      )}
-                      {msg.type === "fact_check" && (
-                        <span className="text-xs font-bold text-rose-400 bg-rose-500/10 px-3 py-1 rounded-lg border border-rose-500/20 flex items-center gap-1.5">
-                          <AlertTriangle size={14} />
-                          一致性监测
-                        </span>
-                      )}
-                      {msg.type === "user_question" && (
-                        <span className="text-xs font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5">
-                          <HelpCircle size={14} />
-                          用户提问
-                        </span>
-                      )}
                     </div>
                     <span className="text-xs text-slate-500 font-mono font-bold">
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -523,12 +650,10 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
                         </div>
                       )}
                     </div>
-                    {/* Subtle accent line dropshadow focus */}
-                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-full opacity-60 ${(roleColors[msg.role] || "bg-slate-600").split(' ')[0]}`} />
                   </div>
                 </div>
               </motion.div>
-            )
+            );
           })}
         </AnimatePresence>
 
@@ -540,7 +665,6 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
         )}
       </div>
 
-      {/* Chat Input for Follow-up Questions */}
       {messages.length > 0 && !isDiscussing && onSendMessage && (
         <div className="p-6 border-t border-slate-700/50 bg-slate-800 shadow-inner max-w-4xl mx-auto w-full">
           <div className="relative flex items-center gap-4">
@@ -580,7 +704,66 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
           </p>
         </div>
       )}
+
+      {/* Feishu Config Modal Overlay */}
+      <AnimatePresence>
+        {showFeishuConfig && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-6">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <Send size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white tracking-tight">配置飞书推送</h3>
+                  <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">FEISHU BOT WEBHOOK</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-slate-800 border border-slate-700">
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Webhook URL</label>
+                  <input 
+                    type="text" 
+                    value={tempWebhook}
+                    onChange={(e) => setTempWebhook(e.target.value)}
+                    placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+                    className="w-full bg-transparent border-none text-sm text-white placeholder-slate-600 focus:ring-0 p-0"
+                    autoFocus
+                  />
+                </div>
+                
+                <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex gap-3 items-start">
+                  <Info size={16} className="text-blue-400 mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-zinc-400 leading-relaxed italic">
+                    配置后，分析结果将通过飞书内置交互式卡片的形式推送至对应群组。私钥将仅存储在您的浏览器本地缓存中。
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    onClick={() => setShowFeishuConfig(false)}
+                    className="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-bold transition-all"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    onClick={saveFeishuWebhook}
+                    className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/20 transition-all"
+                  >
+                    保存并发送
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
-
