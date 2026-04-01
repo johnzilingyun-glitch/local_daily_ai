@@ -90,9 +90,12 @@ describe('geminiService', () => {
     it('should return only models that respond successfully to ping', async () => {
       const availableModels = await fetchAvailableModelsList({ apiKey: 'test_key' });
       
-      // Based on our mock, only 'gemini-3-flash-preview' will succeed
-      expect(availableModels.length).toBe(1);
-      expect(availableModels[0].id).toBe('gemini-3-flash-preview');
+      // All models are returned with status flags
+      expect(availableModels.length).toBeGreaterThan(0);
+      // Only 'gemini-3-flash-preview' succeeds based on mock
+      const available = availableModels.filter(m => m.status === 'available');
+      expect(available.length).toBe(1);
+      expect(available[0].id).toBe('gemini-3-flash-preview');
     });
 
     it('should throw an error if no models are available', async () => {

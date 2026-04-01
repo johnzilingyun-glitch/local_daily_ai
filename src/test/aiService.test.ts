@@ -25,7 +25,7 @@ describe('AI Service Helpers', () => {
 
     it('should throw error if no JSON is found', () => {
       const raw = 'Just some text without braces';
-      expect(() => extractJsonBlock(raw)).toThrow('Gemini returned a non-JSON response.');
+      expect(() => extractJsonBlock(raw)).toThrow('Gemini returned a non-JSON response');
     });
   });
 

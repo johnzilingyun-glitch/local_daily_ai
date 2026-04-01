@@ -1,11 +1,13 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
-console.log('Main is loading');
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary fallback="应用加载失败，请刷新页面重试。">
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

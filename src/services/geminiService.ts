@@ -6,13 +6,14 @@ export const GEMINI_MODEL = "gemini-3-flash-preview";
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function getApiKey(config?: { apiKey?: string }): string {
+  // Priority: 1. Explicit config → 2. Store (user-set) → 3. Env var
   if (config?.apiKey) return config.apiKey;
   const storeApiKey = useConfigStore.getState().config?.apiKey;
   if (storeApiKey) return storeApiKey;
   
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "AIzaSyDPWJlFit8gSOzYnO5y29xit6-amjdJowI") {
-    return "AIzaSyA06MlY8alZiQQLVPvWw1iIWBty7mTP1hQ";
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('未配置 Gemini API Key。请在设置中填写，或在 .env 文件中设置 VITE_GEMINI_API_KEY。');
   }
   return apiKey;
 }

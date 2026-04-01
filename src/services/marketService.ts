@@ -4,6 +4,7 @@ import { getMarketOverviewPrompt, getDailyReportPrompt } from "./prompts";
 import { MarketOverview, GeminiConfig, Market } from "../types";
 import { getHistoryContext, saveAnalysisToHistory } from "./adminService";
 import { getBeijingDate } from "./dateUtils";
+import { MarketOverviewSchema, validateResponse } from "./schemas";
 
 export async function getMarketOverview(config?: GeminiConfig, market: Market = "A-Share", forceRefresh: boolean = false): Promise<MarketOverview> {
   const now = new Date();
@@ -38,7 +39,8 @@ export async function getMarketOverview(config?: GeminiConfig, market: Market = 
     return result.text;
   });
 
-  const overview = parseJsonResponse<MarketOverview>(response);
+  const raw = parseJsonResponse<MarketOverview>(response);
+  const overview = validateResponse(MarketOverviewSchema, raw, 'MarketOverview') as MarketOverview;
   overview.id = `market-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   if (overview.indices && overview.indices.length > 0) {

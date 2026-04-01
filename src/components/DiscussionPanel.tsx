@@ -13,7 +13,8 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import { useAnalysisStore } from '../stores/useAnalysisStore';
-import { useUIStore } from '../stores/useUIStore';
+import { useDiscussionStore } from '../stores/useDiscussionStore';
+import { useUIStore, selectIsDiscussing, selectIsReviewing } from '../stores/useUIStore';
 import { useConfigStore } from '../stores/useConfigStore';
 import { getQualityLabel } from '../services/dataQualityService';
 import { sendAnalysisToFeishu } from '../services/feishuService';
@@ -73,16 +74,11 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
  onToggleFullscreen,
  onPointerDownDrag
 }) => {
- const {
- discussionMessages: messages,
- analystWeights,
- analysis
- } = useAnalysisStore();
+ const { analysis } = useAnalysisStore();
+ const { discussionMessages: messages, analystWeights } = useDiscussionStore();
 
- const {
- isDiscussing,
- isReviewing
- } = useUIStore();
+ const isDiscussing = useUIStore(selectIsDiscussing);
+ const isReviewing = useUIStore(selectIsReviewing);
 
  const { feishuWebhook, setFeishuWebhook } = useConfigStore();
  const [showFeishuConfig, setShowFeishuConfig] = useState(false);
@@ -153,7 +149,7 @@ export const DiscussionPanel: React.FC<DiscussionPanelProps> = ({
  setIsSendingToFeishu(true);
  setShareStatus('loading');
  try {
- const success = await sendAnalysisToFeishu(analysis, feishuWebhook);
+ const success = await sendAnalysisToFeishu(analysis!, feishuWebhook);
  if (success) {
  setShareStatus('success');
  setTimeout(() => setShareStatus('idle'), 3000);

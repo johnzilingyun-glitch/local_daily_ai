@@ -6,6 +6,7 @@ import { getHistoryContext, saveAnalysisToHistory } from "./adminService";
 import { getBeijingDate } from "./dateUtils";
 import { getCommoditiesData } from "./marketService";
 import { calculateQualityScore } from "./dataQualityService";
+import { StockAnalysisSchema, validateResponse } from "./schemas";
 
 export async function analyzeStock(symbol: string, market: Market, config?: GeminiConfig): Promise<StockAnalysis> {
   const ai = createAI(config);
@@ -14,7 +15,7 @@ export async function analyzeStock(symbol: string, market: Market, config?: Gemi
   const beijingDate = getBeijingDate(now);
   const beijingShortDate = beijingDate.split(/[-/]/).slice(1).join('/');
 
-  let realtimeData = null;
+  let realtimeData: any = null;
   const res = await fetch(`/api/stock/realtime?symbol=${encodeURIComponent(symbol)}&market=${market}`);
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
@@ -44,7 +45,8 @@ export async function analyzeStock(symbol: string, market: Market, config?: Gemi
     return result.text;
   });
 
-  const analysis = parseJsonResponse<StockAnalysis>(response);
+  const raw = parseJsonResponse<StockAnalysis>(response);
+  const analysis = validateResponse(StockAnalysisSchema, raw, 'StockAnalysis') as StockAnalysis;
   
   // Calculate and associate data quality metadata
   analysis.dataQuality = calculateQualityScore(analysis.stockInfo);
@@ -116,7 +118,7 @@ export async function getDiscussionReport(
   config?: GeminiConfig
 ): Promise<string> {
   const ai = createAI(config);
-  const prompt = getDiscussionReportPrompt(analysis, discussion, scenarios, backtestResult);
+  const prompt = getDiscussionReportPrompt(analysis, discussion, scenarios ?? [], backtestResult);
 
   const response = await withRetry(async () => {
     const result = await generateContentWithUsage(ai, {

@@ -396,3 +396,214 @@ export interface GeminiConfig {
   apiKey?: string;
   feishuWebhookUrl?: string;
 }
+
+export interface ReportPreference {
+  detailLevel: 'executive' | 'analyst' | 'trader';
+  focusAreas: ('fundamental' | 'technical' | 'risk' | 'scenario' | 'sentiment')[];
+  includeBacktest: boolean;
+  includeExpertDebate: boolean;
+  maxLength: 'brief' | 'standard' | 'full';
+}
+
+// === 10.1 Data Freshness ===
+export type FreshnessStatus = 'fresh' | 'delayed' | 'stale';
+
+export interface FreshnessInfo {
+  status: FreshnessStatus;
+  label: string;     // "🟢 实时" | "🟡 延迟" | "🔴 过时"
+  ageMinutes: number;
+}
+
+// === 10.2 Analysis Cache ===
+export interface CachedAnalysis {
+  data: StockAnalysis;
+  timestamp: number;
+}
+
+// === OPT-1 Discussion Orchestrator ===
+export interface DiscussionRound {
+  round: number;
+  experts: AgentRole[];
+  parallel: boolean;
+  dependsOn: number[];
+}
+
+export interface OrchestratorConfig {
+  level: AnalysisLevel;
+  assetType: 'stock' | 'etf' | 'index' | 'bond';
+  skipRoles?: AgentRole[];
+  maxConcurrency: number;
+}
+
+// === OPT-2 Backtest Enhancement ===
+export interface BacktestTimeSeries {
+  symbol: string;
+  entries: BacktestEntry[];
+  overallAccuracy: number;
+  directionAccuracy: number;
+  avgHoldingPeriodDays: number;
+  profitFactor: number;
+  maxConsecutiveLosses: number;
+  longestWinStreak: number;
+  sharpeRatio: number;
+}
+
+export interface BacktestEntry {
+  date: string;
+  recommendation: string;
+  targetPrice: number;
+  stopLoss: number;
+  actualPrice: number;
+  returnPercent: number;
+  directionCorrect: boolean;
+  targetHit: boolean;
+}
+
+export interface ExpertTrackRecord {
+  role: AgentRole;
+  totalCalls: number;
+  directionAccuracy: number;
+  targetHitRate: number;
+  avgOvershoot: number;
+  bestSector: string;
+  worstSector: string;
+  recentTrend: 'improving' | 'declining' | 'stable';
+  last5Accuracy: number[];
+}
+
+export interface SystematicBias {
+  hasBias: boolean;
+  biasType: 'bullish_drift' | 'bearish_drift' | 'target_overshoot' | null;
+  severity: 'low' | 'medium' | 'high';
+  consecutiveCount: number;
+}
+
+// === OPT-6 Analysis Level ===
+export type AnalysisLevel = 'quick' | 'standard' | 'deep';
+
+// === OPT-1 Expert Output ===
+export interface ExpertOutput {
+  role: AgentRole;
+  message: AgentMessage;
+  structuredData?: {
+    coreVariables?: CoreVariable[];
+    quantifiedRisks?: QuantifiedRisk[];
+    scenarios?: Scenario[];
+    tradingPlan?: TradingPlan;
+  };
+}
+
+// === NEW-1 Watchlist ===
+export interface WatchlistItem {
+  id: string;
+  symbol: string;
+  name: string;
+  market: Market;
+  addedAt: string;
+  notes: string;
+  alertThreshold: number;
+  scoreHistory: ScoreSnapshot[];
+  lastQuickScan?: QuickScanResult;
+  alertHistory: WatchlistAlert[];
+}
+
+export interface ScoreSnapshot {
+  date: string;
+  score: number;
+  price: number;
+  recommendation: string;
+}
+
+export interface QuickScanResult {
+  score: number;
+  sentiment: string;
+  recommendation: string;
+  summary: string;
+  timestamp: string;
+}
+
+export interface WatchlistAlert {
+  id: string;
+  type: 'score_drop' | 'score_rise' | 'price_target' | 'stop_loss';
+  message: string;
+  triggeredAt: string;
+  acknowledged: boolean;
+}
+
+// === NEW-2 Sector Rotation ===
+export interface SectorRotation {
+  sector: string;
+  capitalFlowTrend: 'inflow' | 'outflow' | 'neutral';
+  flowMagnitude: number;
+  clockQuadrant: 'recovery' | 'expansion' | 'overheating' | 'stagflation';
+  momentum30d: number;
+  topStocks: { symbol: string; name: string; score: number }[];
+  updatedAt: string;
+}
+
+export interface MarketCycle {
+  currentPhase: 'recovery' | 'expansion' | 'overheating' | 'stagflation';
+  phaseConfidence: number;
+  recommendedSectors: string[];
+  avoidSectors: string[];
+  logic: string;
+}
+
+export interface SectorRotationData {
+  rotations: SectorRotation[];
+  cycle: MarketCycle;
+  generatedAt: string;
+}
+
+// === NEW-4 Comparison ===
+export interface ComparisonResult {
+  stocks: ComparisonStock[];
+  sharedIndustry: string;
+  verdict: string;
+  generatedAt: string;
+}
+
+export interface ComparisonStock {
+  symbol: string;
+  name: string;
+  market: Market;
+  score: number;
+  recommendation: string;
+  pe?: string;
+  pb?: string;
+  roe?: string;
+  moatStrength?: 'Wide' | 'Narrow' | 'None';
+  riskLevel: 'Low' | 'Medium' | 'High';
+}
+
+// === NEW-5 Decision Journal ===
+export interface DecisionEntry {
+  id: string;
+  symbol: string;
+  name: string;
+  market: Market;
+  analysisId: string;
+  action: 'buy' | 'hold' | 'sell' | 'add' | 'reduce' | 'watch';
+  reasoning: string;
+  priceAtDecision: number;
+  confidence: number;
+  createdAt: string;
+  reviewDate: string;
+  priceAtReview?: number;
+  actualReturn?: number;
+  outcome?: 'correct' | 'incorrect' | 'neutral';
+  reflection?: string;
+  lessonsLearned?: string[];
+  biasDetected?: string;
+}
+
+export interface DecisionStats {
+  totalDecisions: number;
+  correctRate: number;
+  avgConfidence: number;
+  overconfidenceBias: number;
+  mostCommonBias: string;
+  bestPerformingAction: string;
+  worstPerformingAction: string;
+  avgReturnByAction: Record<string, number>;
+}
