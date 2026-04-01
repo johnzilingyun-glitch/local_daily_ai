@@ -149,3 +149,54 @@ export async function sendAnalysisToFeishu(analysis: StockAnalysis, webhookUrl: 
     return false;
   }
 }
+
+export async function sendRawMarkdownToFeishu(title: string, markdown: string, webhookUrl: string, template: string = "blue"): Promise<boolean> {
+  if (!webhookUrl) {
+    console.error("Feishu Webhook URL is missing");
+    return false;
+  }
+
+  const card = {
+    config: { wide_screen_mode: true },
+    header: {
+      template: template,
+      title: {
+        content: title,
+        tag: "plain_text"
+      }
+    },
+    elements: [
+      {
+        tag: "div",
+        text: {
+          content: markdown,
+          tag: "lark_md"
+        }
+      },
+      {
+        tag: "hr"
+      },
+      {
+        tag: "note",
+        elements: [
+          {
+            content: `📅 ${new Date().toLocaleString('zh-CN')} | 🤖 Antigravity 机构决策引擎 | Custom Report`,
+            tag: "plain_text"
+          }
+        ]
+      }
+    ]
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ msg_type: "interactive", card: card })
+    });
+    return response.ok;
+  } catch (error) {
+    console.error("Failed to send raw markdown to Feishu:", error);
+    return false;
+  }
+}

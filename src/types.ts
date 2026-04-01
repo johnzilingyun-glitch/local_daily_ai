@@ -24,6 +24,7 @@ export interface DataQuality {
   sourcePriority: "Official API" | "Search/Scraped" | "AI Estimated";
   isStale: boolean;
   missingFields: string[];
+  semanticIssues?: string[];
 }
 
 export interface NewsItem {
@@ -132,6 +133,8 @@ export interface TradingPlanVersion {
 
 export interface StockAnalysis {
   id?: string;
+  symbol?: string;
+  timestamp?: string;
   stockInfo: StockInfo;
   fundamentals?: StockFundamentals;
   historicalData?: HistoricalData;
@@ -392,7 +395,10 @@ export interface QuantifiedRisk {
 }
 
 export interface GeminiConfig {
+  apiKey: string;
   model: string;
-  apiKey?: string;
+  temperature: number;
+  maxTokens: number;
   feishuWebhookUrl?: string;
+  cachingEnabled?: boolean;
 }

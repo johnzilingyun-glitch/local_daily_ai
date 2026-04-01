@@ -25,7 +25,7 @@ describe('AI Service Helpers', () => {
 
     it('should throw error if no JSON is found', () => {
       const raw = 'Just some text without braces';
-      expect(() => extractJsonBlock(raw)).toThrow('Gemini returned a non-JSON response.');
+      expect(() => extractJsonBlock(raw)).toThrow('Gemini returned a non-JSON response');
     });
   });
 
@@ -39,7 +39,7 @@ describe('AI Service Helpers', () => {
 
     it('should throw error for invalid JSON', () => {
       const raw = '```json\n{"symbol": "AAPL", "price": 150\n```'; // Missing closing brace
-      expect(() => parseJsonResponse(raw)).toThrow('Failed to parse Gemini JSON response');
+      expect(() => parseJsonResponse(raw)).toThrow('AI Response Parsing Failure');
     });
   });
 });

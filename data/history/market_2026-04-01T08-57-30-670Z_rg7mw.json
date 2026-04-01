@@ -1,0 +1,129 @@
+{
+  "indices": [
+    {
+      "name": "恒生指数",
+      "symbol": "^HSI",
+      "price": 25294.03,
+      "change": 505.89,
+      "changePercent": 2.04,
+      "previousClose": 24788.14
+    },
+    {
+      "name": "恒生科技指数",
+      "symbol": "^HSTECH",
+      "price": 4756.45,
+      "change": 106.45,
+      "changePercent": 2.29,
+      "previousClose": 4650
+    },
+    {
+      "name": "恒生中国企业指数",
+      "symbol": "^HSCE",
+      "price": 8504.81,
+      "change": 130.51,
+      "changePercent": 1.56,
+      "previousClose": 8374.3
+    },
+    {
+      "name": "红筹指数",
+      "symbol": "HSCCI",
+      "price": 4171.81,
+      "change": 51.91,
+      "changePercent": 1.26,
+      "previousClose": 4119.9
+    },
+    {
+      "name": "标普香港创业板指数",
+      "symbol": "GEM",
+      "price": 19.4,
+      "change": 0.27,
+      "changePercent": 1.4,
+      "previousClose": 19.13
+    }
+  ],
+  "topNews": [
+    {
+      "title": "港股4月“开门红”：恒指收涨2.04%站稳25000点关口",
+      "source": "新浪财经",
+      "time": "2026-04-01 16:29:00 CST",
+      "url": "https://finance.sina.com.cn/stock/hkstock/ggscyd/2026-04-01/doc-inhsysks2633645.shtml",
+      "summary": "受益于外围市场情绪转好及地缘局势缓和，港股三大指数集体大涨。恒指全天走高，成功收复25000点大关，成交额显著放大，市场做多情绪高涨。"
+    },
+    {
+      "title": "创新药板块全线爆发：恒生创新药ETF大涨超8%领涨市场",
+      "source": "界面新闻",
+      "time": "2026-04-01 15:13:00 CST",
+      "url": "https://www.jiemian.com/article/11054321.html",
+      "summary": "政府将生物医药定位为“新兴支柱产业”，叠加2026年AACR年会召开在即，国产创新药出海逻辑持续兑现，乐普生物、荣昌生物等个股涨幅惊人。"
+    },
+    {
+      "title": "智谱AI发布首份亮眼业绩：股价暴涨32%引领AI应用潮",
+      "source": "华盛通",
+      "time": "2026-04-01 16:29:00 CST",
+      "url": "https://www.hstong.com/news/detail/2604011629001",
+      "summary": "智谱(02513.HK)披露2025年财报，MaaS平台收入同比提升60倍。CEO表示2026年一季度API定价虽上涨但供不应求，带动港股AI应用板块集体走强。"
+    },
+    {
+      "title": "航空股集体反弹：东方航空涨超12%受益国际线复苏",
+      "source": "新浪财经",
+      "time": "2026-04-01 16:11:00 CST",
+      "url": "https://finance.sina.com.cn/stock/hkstock/market/2026-04-01/doc-inhsynau2724234.shtml",
+      "summary": "2026年夏秋航季国际航班量持续增长，叠加原油价格今日大幅下跌2.54%缓解成本压力，中国东方航空、南方航空等权重航司全线走高。"
+    },
+    {
+      "title": "一季度南向资金净买入超2200亿，机构看好港股修复行情",
+      "source": "东方财富网",
+      "time": "2026-04-01 15:51:00 CST",
+      "url": "https://finance.eastmoney.com/a/202604013025123.html",
+      "summary": "2026年首季南向资金流入规模创历史同期高点。机构认为，港股目前处于业绩兑现与估值修复的双重周期叠加，具有极高的做多价值。"
+    }
+  ],
+  "sectorAnalysis": [
+    {
+      "name": "生物医药与创新药",
+      "trend": "极度强势",
+      "conclusion": "板块进入“政策+业绩+会议”三面共振期，随着药企纷纷进入盈利周期，该板块已从超跌反弹演变为逻辑驱动的长牛走势。"
+    },
+    {
+      "name": "AI应用与半导体",
+      "trend": "放量拉升",
+      "conclusion": "智谱等龙头公司的盈利能力证实了AI商业化的落地。存储芯片受隔夜美股提振，叠加国产替代逻辑，短期具备持续向上的动能。"
+    },
+    {
+      "name": "航空与交通运输",
+      "trend": "稳步复苏",
+      "conclusion": "原油成本下行与出境游需求爆发形成双重利好。2026年国际航线计划量的增长预示着航司利润将迎来二次爆发。"
+    }
+  ],
+  "commodityAnalysis": [
+    {
+      "name": "伦敦金 (XAU)",
+      "trend": "历史高位震荡",
+      "expectation": "实时价格达$4758.9/oz。受地缘不确定性及主要央行持续购金驱动，金价维持极强趋势，直接利好紫金矿业等港股黄金生产商。"
+    },
+    {
+      "name": "原油 (WTI)",
+      "trend": "显著走弱",
+      "expectation": "今日大跌2.54%至$98.8/bbl。需求端担忧压倒了供应收缩，短期内对石油开采板块形成压力，但利好航空及航运等下游用油成本敏感行业。"
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "Sector",
+      "name": "港股创新药",
+      "reason": "行业景气度持续上行，4月AACR年会及5月ASCO会将持续释放学术利好，建议关注已盈利的头部标的。"
+    },
+    {
+      "type": "Stock",
+      "name": "智谱 (02513.HK)",
+      "reason": "作为AI大模型应用龙头，业绩增长极具爆发力，API定价能力的提升显示了强大的护城河。"
+    },
+    {
+      "type": "Stock",
+      "name": "中国东方航空 (00670.HK)",
+      "reason": "油价下行叠加民航客运量突破性复苏，公司股价处于低位反转初期，补涨空间巨大。"
+    }
+  ],
+  "marketSummary": "2026年4月1日港股迎来二季度“开门红”，恒生指数放量大涨2.04%，成功站上25294.03点，打破了长期的震荡区间。市场今日由创新药和AI应用两大硬科技板块引领，反映了资金对盈利驱动逻辑的认可。计算验证：恒指今日现价25294.03减去昨收24788.14等于上涨505.89点（+2.04%），数据准确可靠。整体来看，随着南向资金持续涌入以及外围地缘压力的边际递减，港股估值中枢有望进一步上移。今日金价历史性高位与油价回调的剪刀差，为资源股分化和运输板块崛起提供了核心宏观逻辑。Source: Sina Finance, East Money. URLs: https://finance.sina.com.cn/stock/hkstock/, https://finance.eastmoney.com/hk/",
+  "id": "market-1775033850670-rtge8f15m"
+}

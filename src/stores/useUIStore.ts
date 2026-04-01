@@ -19,6 +19,7 @@ interface UIState {
   showAdminPanel: boolean;
   selectedDetail: { type: 'log' | 'history', data: any } | null;
   autoRefreshInterval: number; // 0 means off
+  aiHealth: 'healthy' | 'degraded' | 'error';
 
   setLoading: (loading: boolean) => void;
   setOverviewLoading: (loading: boolean) => void;
@@ -37,6 +38,7 @@ interface UIState {
   setShowAdminPanel: (show: boolean) => void;
   setSelectedDetail: (detail: { type: 'log' | 'history', data: any } | null) => void;
   setAutoRefreshInterval: (interval: number) => void;
+  setAIHealth: (health: 'healthy' | 'degraded' | 'error') => void;
   resetErrors: () => void;
 }
 
@@ -60,6 +62,7 @@ export const useUIStore = create<UIState>()(
       showAdminPanel: false,
       selectedDetail: null,
       autoRefreshInterval: 0,
+      aiHealth: 'healthy',
 
       setLoading: (loading) => set({ loading }),
       setOverviewLoading: (overviewLoading) => set({ overviewLoading }),
@@ -78,6 +81,7 @@ export const useUIStore = create<UIState>()(
       setShowAdminPanel: (showAdminPanel) => set({ showAdminPanel }),
       setSelectedDetail: (selectedDetail) => set({ selectedDetail }),
       setAutoRefreshInterval: (autoRefreshInterval) => set({ autoRefreshInterval }),
+      setAIHealth: (aiHealth) => set({ aiHealth }),
       resetErrors: () => set({
         overviewError: null,
         analysisError: null,

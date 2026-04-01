@@ -1,72 +1,226 @@
 [
   {
-    "timestamp": "2026-03-27T02:46:25.199Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:49.987Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/history/context?t=1775033509168 finished with 200 in 11ms"
   },
   {
-    "timestamp": "2026-03-27T07:23:34.015Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:50.666Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/indices?market=A-Share finished with 304 in 892ms"
   },
   {
-    "timestamp": "2026-03-27T07:36:01.396Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:51.161Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/commodities finished with 200 in 451ms"
   },
   {
-    "timestamp": "2026-03-27T07:50:09.500Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:55.411Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":1}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 1)"
   },
   {
-    "timestamp": "2026-03-27T09:03:12.377Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:55.861Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 1058ms"
   },
   {
-    "timestamp": "2026-03-27T13:36:43.790Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:56.644Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":1}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 1)"
   },
   {
-    "timestamp": "2026-03-27T15:08:49.784Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:57.020Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 360ms"
   },
   {
-    "timestamp": "2026-03-27T15:31:10.793Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:59.460Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":2}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 2)"
   },
   {
-    "timestamp": "2026-03-27T16:45:52.980Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:51:59.733Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 7ms"
   },
   {
-    "timestamp": "2026-03-31T07:44:21.458Z",
-    "field": "server",
-    "oldValue": "startup",
-    "newValue": "active",
-    "description": "Server started and background tasks initialized"
+    "timestamp": "2026-04-01T08:52:00.103Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/indices?market=A-Share finished with 304 in 492ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:52:00.461Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":2}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 2)"
+  },
+  {
+    "timestamp": "2026-04-01T08:52:00.822Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 75ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:52:01.577Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/commodities finished with 200 in 232ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:52:02.171Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":1}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 1)"
+  },
+  {
+    "timestamp": "2026-04-01T08:52:02.255Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 11ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:52:05.368Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":2}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 2)"
+  },
+  {
+    "timestamp": "2026-04-01T08:52:05.997Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 9ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:53:30.866Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/history/context?t=1775033610530 finished with 200 in 10ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:53:32.966Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/realtime?symbol=YGDY&market=A-Share finished with 404 in 491ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:24.902Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"cache_hit\",\"symbol\":\"trading_agents_cache\"}",
+    "description": "[RESILIENCE] CACHE_HIT for trading_agents_cache"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:25.119Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 7ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:25.952Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/commodities finished with 200 in 547ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:26.923Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/history/context?t=1775033666234 finished with 200 in 18ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:28.163Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":1}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 1)"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:28.679Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 11ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:30.683Z",
+    "field": "ai_resilience",
+    "oldValue": null,
+    "newValue": "{\"type\":\"retry\",\"model\":\"gemini-3-flash-preview\",\"attempt\":2}",
+    "description": "[RESILIENCE] RETRY (model: gemini-3-flash-preview) (attempt: 2)"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:30.782Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/telemetry/report finished with 200 in 8ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:54:45.688Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/history/context?t=1775033685333 finished with 200 in 17ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:55:57.380Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/history/context?t=1775033756982 finished with 200 in 58ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:55:59.708Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/indices?market=HK-Share finished with 200 in 2324ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:56:00.766Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: GET /api/stock/commodities finished with 200 in 1027ms"
+  },
+  {
+    "timestamp": "2026-04-01T08:57:30.674Z",
+    "field": "api_telemetry",
+    "oldValue": null,
+    "newValue": null,
+    "description": "API Call: POST /api/history/save finished with 200 in 3ms"
   }
 ]

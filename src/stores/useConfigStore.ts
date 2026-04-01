@@ -16,6 +16,8 @@ interface ConfigState {
   setAvailableModels: (models: { id: string, name: string, description: string }[]) => void;
   feishuWebhook: string;
   setFeishuWebhook: (webhook: string) => void;
+  cachingEnabled: boolean;
+  toggleCaching: (enabled: boolean) => void;
 }
 
 export const useConfigStore = create<ConfigState>((set) => {
@@ -55,5 +57,14 @@ export const useConfigStore = create<ConfigState>((set) => {
       localStorage.setItem('feishu_webhook', webhook);
       set({ feishuWebhook: webhook });
     },
+    cachingEnabled: localStorage.getItem('caching_enabled') !== 'false',
+    toggleCaching: (enabled) => {
+      localStorage.setItem('caching_enabled', enabled.toString());
+      set({ cachingEnabled: enabled });
+      set((state) => ({
+        config: { ...state.config, cachingEnabled: enabled },
+        geminiConfig: { ...state.geminiConfig, cachingEnabled: enabled }
+      }));
+    }
   };
 });

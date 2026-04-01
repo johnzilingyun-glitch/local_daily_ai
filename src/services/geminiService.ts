@@ -1,5 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { useConfigStore } from "../stores/useConfigStore";
+import { useUIStore } from "../stores/useUIStore";
+import { telemetryService } from "./telemetryService";
 
 export const GEMINI_MODEL = "gemini-3-flash-preview";
 
@@ -10,22 +12,28 @@ export function getApiKey(config?: { apiKey?: string }): string {
   const storeApiKey = useConfigStore.getState().config?.apiKey;
   if (storeApiKey) return storeApiKey;
   
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "AIzaSyDPWJlFit8gSOzYnO5y29xit6-amjdJowI") {
-    return "AIzaSyA06MlY8alZiQQLVPvWw1iIWBty7mTP1hQ";
+  const apiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey.includes("MY_GEMINI_API_KEY")) {
+    console.warn("No Gemini API key found in config or environment variables.");
+    return "";
   }
   return apiKey;
 }
 
 export function createAI(config?: { apiKey?: string }) {
   const apiKey = getApiKey(config);
+  if (!apiKey) throw new Error("Missing Gemini API Key");
   return new GoogleGenAI({ apiKey });
 }
+
+// Global registry for deduplicating in-flight requests
+const pendingRequests = new Map<string, Promise<any>>();
 
 export async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  baseDelay: number = 2000
+  baseDelay: number = 2000,
+  fallbackFn?: () => Promise<T>
 ): Promise<T> {
   let lastError: any;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -34,24 +42,60 @@ export async function withRetry<T>(
     } catch (error: any) {
       lastError = error;
       const errorStr = typeof error === 'string' ? error : (error?.message || JSON.stringify(error));
-      const isRetryable = errorStr.includes('429') || 
-                          errorStr.includes('503') ||
-                          errorStr.includes('500') ||
-                          errorStr.toLowerCase().includes('quota') || 
-                          errorStr.includes('RESOURCE_EXHAUSTED') ||
-                          errorStr.toLowerCase().includes('unavailable') ||
-                          error?.status === 429 ||
-                          error?.status === 503 ||
-                          error?.status === 500;
+      
+      // Expanded retryable error conditions
+      const isRetryable = 
+        errorStr.includes('429') || 
+        errorStr.includes('503') ||
+        errorStr.includes('500') ||
+        errorStr.includes('504') ||
+        errorStr.toLowerCase().includes('quota') || 
+        errorStr.includes('RESOURCE_EXHAUSTED') ||
+        errorStr.toLowerCase().includes('unavailable') ||
+        errorStr.toLowerCase().includes('deadline_exceeded') ||
+        error?.status === 429 ||
+        error?.status === 503 ||
+        error?.status === 500 ||
+        error?.status === 504;
       
       if (isRetryable && attempt < maxRetries) {
-        const waitTime = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
-        console.warn(`Retryable error hit (${error?.status || 'AI Error'}). Retrying in ${Math.round(waitTime)}ms... (Attempt ${attempt}/${maxRetries})`);
+        // Multiplicative backoff with jitter
+        const waitTime = baseDelay * Math.pow(2.5, attempt - 1) + Math.random() * 1000;
+        console.warn(`[AI RETRY] ${error?.status || 'Error'} hit. Retrying in ${Math.round(waitTime)}ms... (Attempt ${attempt}/${maxRetries})`);
+        
+        if (isQuotaError(error)) {
+          useUIStore.getState().setAIHealth('degraded');
+        }
+        
+        telemetryService.reportRetry(GEMINI_MODEL, attempt);
         await delay(waitTime);
         continue;
       }
       
-      if (attempt >= maxRetries) throw error;
+      // If we have a fallback function and hit a specific error (quota/unavailable)
+      if (fallbackFn && (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED') || errorStr.includes('503'))) {
+        console.warn(`[AI FALLBACK] Strategy engaged due to error: ${error?.status || 'Quota'}.`);
+        telemetryService.reportFallback(GEMINI_MODEL, 'gemini-1.5-flash');
+        return await fallbackFn();
+      }
+
+      // If not retryable or max retries reached, throw
+      if (attempt >= maxRetries) {
+        const isQuota = isQuotaError(error);
+        
+        if (isQuota) {
+          useUIStore.getState().setAIHealth('error');
+        }
+        
+        const finalError = isQuota 
+          ? new Error(`AI 服务配额已耗尽 (API Quota Exhausted). 请稍后再试或在设置中更换 API Key。`) 
+          : (error instanceof Error ? error : new Error(errorStr));
+
+        console.error(`[AI FATAL] Max retries reached or non-retryable error:`, errorStr);
+        throw finalError;
+      }
+      
+      // Small fixed delay for non-specified errors before final throw
       await delay(1000);
     }
   }
@@ -141,24 +185,42 @@ export function extractJsonBlock(raw: string): string {
 }
 
 export function parseJsonResponse<T>(raw: string): T {
+  if (!raw || raw.trim() === "") {
+    throw new Error("Gemini returned an empty response.");
+  }
+
   try {
-    const parsed = JSON.parse(extractJsonBlock(raw));
+    const jsonBlock = extractJsonBlock(raw);
+    const parsed = JSON.parse(jsonBlock);
+    
+    // Intelligent heuristic for nested structures
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      if (parsed.analysis) return parsed.analysis as T;
-      if (parsed.data) return parsed.data as T;
-      if (parsed.stockInfo && parsed.stockInfo.symbol) return parsed as T;
+      // Common Gemini nesting patterns
+      if (parsed.analysis && typeof parsed.analysis === 'object') return parsed.analysis as T;
+      if (parsed.data && typeof parsed.data === 'object') return parsed.data as T;
+      
+      // If it looks like the target structure already
+      if (parsed.stockInfo && (parsed.stockInfo.symbol || parsed.stockInfo.name)) return parsed as T;
+      if (parsed.indices && Array.isArray(parsed.indices)) return parsed as T;
+      
+      // Single-key wrappers
       const keys = Object.keys(parsed);
-      if (keys.length === 1 && parsed[keys[0]] && typeof parsed[keys[0]] === 'object' && parsed[keys[0]].stockInfo) {
-        return parsed[keys[0]] as T;
+      if (keys.length === 1) {
+        const firstKey = keys[0];
+        const nested = parsed[firstKey];
+        if (nested && typeof nested === 'object' && (nested.stockInfo || nested.indices || nested.messages)) {
+          return nested as T;
+        }
       }
     }
     return parsed as T;
   } catch (error) {
-    console.error("Failed to parse Gemini JSON response. Raw response:", raw);
+    console.error("Critical JSON Parse Error. Raw string length:", raw.length);
+    console.error("Raw response snippet:", raw.substring(0, 200) + "...");
     throw new Error(
       error instanceof Error
-        ? `Failed to parse Gemini JSON response: ${error.message}`
-        : "Failed to parse Gemini JSON response."
+        ? `AI Response Parsing Failure: ${error.message}`
+        : "Failed to decode AI response architecture."
     );
   }
 }
@@ -173,6 +235,24 @@ export async function generateContentWithUsage(ai: any, params: any) {
     });
   }
   return result;
+}
+
+/**
+ * Deduplicates in-flight requests based on a unique key
+ */
+export async function getDeduplicatedContent<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
+  const existing = pendingRequests.get(key);
+  if (existing) {
+    console.log(`[AI DEDUPE] Sharing existing request for key: ${key.substring(0, 40)}...`);
+    return existing;
+  }
+
+  const promise = requestFn().finally(() => {
+    pendingRequests.delete(key);
+  });
+
+  pendingRequests.set(key, promise);
+  return promise;
 }
 
 export async function fetchAvailableModelsList(config?: any) {
@@ -206,4 +286,14 @@ export async function fetchAvailableModelsList(config?: any) {
   }
 
   return availableModels;
+}
+
+export function isQuotaError(error: any): boolean {
+  const errorStr = typeof error === 'string' ? error : (error?.message || JSON.stringify(error));
+  return (
+    errorStr.includes('429') || 
+    errorStr.includes('RESOURCE_EXHAUSTED') || 
+    errorStr.toLowerCase().includes('quota') ||
+    error?.status === 429
+  );
 }

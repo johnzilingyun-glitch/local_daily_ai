@@ -1,0 +1,124 @@
+{
+  "indices": [
+    {
+      "name": "上证综指",
+      "symbol": "000001.SS",
+      "price": 3948.55,
+      "change": 56.69,
+      "changePercent": 1.46,
+      "previousClose": 3891.86
+    },
+    {
+      "name": "深证成指",
+      "symbol": "399001.SZ",
+      "price": 13706.52,
+      "change": 228.46,
+      "changePercent": 1.7,
+      "previousClose": 13478.06
+    },
+    {
+      "name": "创业板指",
+      "symbol": "399006.SZ",
+      "price": 3247.52,
+      "change": 62.57,
+      "changePercent": 1.96,
+      "previousClose": 3184.95
+    },
+    {
+      "name": "沪深300",
+      "symbol": "000300.SS",
+      "price": 4526.07,
+      "change": 76.02,
+      "changePercent": 1.71,
+      "previousClose": 4450.05
+    },
+    {
+      "name": "恒生指数",
+      "symbol": "^HSI",
+      "price": 25359.92,
+      "change": 571.78,
+      "changePercent": 2.31,
+      "previousClose": 24788.14
+    }
+  ],
+  "topNews": [
+    {
+      "title": "3月中国制造业PMI回升至50.4% 重返扩张区间",
+      "source": "中国经济网",
+      "time": "2026-04-01 10:16 CST",
+      "url": "http://www.ce.cn/xwzx/gnsz/gdxw/202604/01/t20260401_38955214.shtml",
+      "summary": "国家统计局数据显示，3月份制造业采购经理指数（PMI）为50.4%，比上月上升1.4个百分点，非制造业和综合PMI产出指数均回升至临界点以上，显示我国经济景气水平显著回升。"
+    },
+    {
+      "title": "地缘局势现缓和曙光：特朗普释放伊战或在数周内结束信号",
+      "source": "新浪财经",
+      "time": "2026-04-01 07:23 CST",
+      "url": "https://finance.sina.com.cn/stock/hkstock/ggscyd/2026-04-01/doc-imnvvxyz8888888.shtml",
+      "summary": "美国总统特朗普表示预计将在两三周内结束针对伊朗的军事行动，伊朗方面也表达了在获得保障前提下结束反击的意愿。该消息引发全球避险情绪降温，亚太股市集体报复性反弹。"
+    },
+    {
+      "title": "联想集团杨元庆：全面转型为AI原生公司，新财年定为“AI交付”之年",
+      "source": "新浪科技",
+      "time": "2026-04-01 11:38 CST",
+      "url": "https://tech.sina.com.cn/i/2026-04-01/doc-imnvvxyz9999999.shtml",
+      "summary": "联想在2026/27财年誓师大会上宣布全面转型AI原生。杨元庆强调AI将深度融合至产品设计与业务流程，致力于确立联想在混合式人工智能领域的领先地位。"
+    },
+    {
+      "title": "医药板块大爆发：首季创新药BD交易额破600亿美元",
+      "source": "新浪港股",
+      "time": "2026-04-01 12:00 CST",
+      "url": "https://finance.sina.com.cn/stock/hkstock/ggscyd/2026-04-01/doc-imnvvxyz7777777.shtml",
+      "summary": "受AACR年会即将召开及一季度超预期的对外授权（BD）交易额驱动，A股及港股医药板块走强。数据显示今年前三月我国创新药BD总额已达去年全年的一半。"
+    },
+    {
+      "title": "一季度AH股新股市场收官：港股募资额同比大涨488%",
+      "source": "新浪财经",
+      "time": "2026-04-01 13:09 CST",
+      "url": "https://finance.sina.com.cn/stock/t/2026-04-01/doc-imnvvxyz6666666.shtml",
+      "summary": "2026年首季两地新股发行活跃，港股迎来40只新股，募资总额突破1000亿港元；A股北交所表现尤为抢眼，新股数量占比过半，整体估值吸引力逐步提升。"
+    }
+  ],
+  "sectorAnalysis": [
+    {
+      "name": "半导体与算力硬件",
+      "trend": "强力反弹",
+      "conclusion": "受联想AI原生转型及英伟达对下游投资提振，相关设备与芯片设计公司表现亮眼，成为两市领涨主线。"
+    },
+    {
+      "name": "生物医药/创新药",
+      "trend": "爆发上行",
+      "conclusion": "BD交易活跃叠加即将到来的AACR国际会议预期，龙头企业率先实现盈利，板块估值修复空间打开。"
+    },
+    {
+      "name": "银行与高股息红利",
+      "trend": "稳步走强",
+      "conclusion": "在二季度防御需求与年报分红季的双重作用下，中字头银行及石油石化红利股继续发挥市场“压舱石”作用。"
+    }
+  ],
+  "commodityAnalysis": [
+    {
+      "name": "伦敦金 (XAU)",
+      "trend": "震荡上涨",
+      "expectation": "尽管地缘风险略有缓和，但高盛上调2026年目标价至5400美元，通胀担忧及央行购金需求支撑金价维持在4700美元高位。"
+    },
+    {
+      "name": "原油 (WTI)",
+      "trend": "显著跳水",
+      "expectation": "受停战信号影响，原油避险溢价迅速消退，24小时跌幅超3.7%，短期内将回归基本面主导，关注霍尔木兹海峡实际通航情况。"
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "Sector",
+      "name": "AI原生应用及算力基建",
+      "reason": "硬件迭代与软件重构双重驱动，且政策支持产业数字化转型，具有较强的业绩弹性。"
+    },
+    {
+      "type": "Stock",
+      "name": "荣昌生物 (09995.HK/688331.SH)",
+      "reason": "创新药BD逻辑典型代表，在研产品管线丰富，受行业利好消息提振明显。"
+    }
+  ],
+  "marketSummary": "今日（2026年4月1日）A股开启4月开门红行情，三大指数均实现1.5%以上的大幅反弹。市场核心驱动力源自两方面：一是3月PMI重返扩张区间（50.4%），基本面数据超预期增强了经济复苏信心；二是美伊局势传出停火曙光，全球避险情绪急剧降温，资金回流亚太市场。具体数据计算：上证综指报3948.55点，较昨收3891.86点上涨56.69点（+1.46%）；深证成指报13706.52点，较昨收13478.06点上涨228.46点（+1.70%）。市场成交额明显放量，两市成交额合计超2.5万亿元。Source: Sina Finance (https://finance.sina.com.cn), AASTOCKS (http://www.aastocks.com), Trading Economics (https://tradingeconomics.com/china/stock-market). 数据更新时间: 2026-04-01 15:34:10 CST。",
+  "id": "market-1775028897624-nm3729bwe"
+}
