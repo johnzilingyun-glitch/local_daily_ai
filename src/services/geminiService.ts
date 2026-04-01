@@ -51,7 +51,14 @@ export async function withRetry<T>(
         continue;
       }
       
-      if (attempt >= maxRetries) throw error;
+      if (attempt >= maxRetries) {
+        // Wrap quota/rate-limit errors with a user-friendly message
+        const errStr = typeof error === 'string' ? error : (error?.message || JSON.stringify(error));
+        if (errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.toLowerCase().includes('quota')) {
+          throw new Error('API 配额已耗尽，请等待几分钟后重试，或在 https://ai.dev/rate-limit 查看额度状态。');
+        }
+        throw error;
+      }
       await delay(1000);
     }
   }
@@ -175,7 +182,16 @@ export async function generateContentWithUsage(ai: any, params: any) {
   return result;
 }
 
-export async function fetchAvailableModelsList(config?: any) {
+export type ModelStatus = 'available' | 'quota_exhausted' | 'unavailable';
+export interface ModelInfo {
+  id: string;
+  name: string;
+  description: string;
+  status: ModelStatus;
+  statusMessage?: string;
+}
+
+export async function fetchAvailableModelsList(config?: any): Promise<ModelInfo[]> {
   const ai = createAI(config);
   
   const modelsToCheck = [
@@ -187,7 +203,7 @@ export async function fetchAvailableModelsList(config?: any) {
     { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Legacy fast model.' }
   ];
 
-  const availableModels = [];
+  const results: ModelInfo[] = [];
 
   for (const m of modelsToCheck) {
     try {
@@ -195,15 +211,22 @@ export async function fetchAvailableModelsList(config?: any) {
         model: m.id,
         contents: "ping",
       });
-      availableModels.push(m);
+      results.push({ ...m, status: 'available' });
     } catch (e: any) {
-      console.warn(`Model ${m.id} skipped:`, e?.message);
+      const msg = e?.message || String(e);
+      const isQuota = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.toLowerCase().includes('quota');
+      if (isQuota) {
+        results.push({ ...m, status: 'quota_exhausted', statusMessage: '配额已耗尽，请稍后重试' });
+      } else {
+        console.warn(`Model ${m.id} skipped:`, msg);
+        results.push({ ...m, status: 'unavailable', statusMessage: msg });
+      }
     }
   }
 
-  if (availableModels.length === 0) {
-    throw new Error("无可用模型 (No working models found). 请检查配额或网络.");
+  if (results.every(m => m.status !== 'available')) {
+    throw new Error("无可用模型 — 所有模型配额已耗尽或不可用，请稍后重试或检查计费设置。");
   }
 
-  return availableModels;
+  return results;
 }

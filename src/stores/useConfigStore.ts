@@ -12,8 +12,8 @@ interface ConfigState {
     totalTokens: number;
   };
   addTokenUsage: (usage: { promptTokens?: number, candidatesTokens?: number, totalTokens?: number }) => void;
-  availableModels: { id: string, name: string, description: string }[];
-  setAvailableModels: (models: { id: string, name: string, description: string }[]) => void;
+  availableModels: { id: string, name: string, description: string, status?: string, statusMessage?: string }[];
+  setAvailableModels: (models: { id: string, name: string, description: string, status?: string, statusMessage?: string }[]) => void;
   feishuWebhook: string;
   setFeishuWebhook: (webhook: string) => void;
 }
